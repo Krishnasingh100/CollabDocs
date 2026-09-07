@@ -39,6 +39,7 @@ CREATE TABLE IF NOT EXISTS documents (
   title TEXT NOT NULL DEFAULT 'Untitled document',
   owner_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   organization_id UUID REFERENCES organizations(id) ON DELETE SET NULL,
+  link_access TEXT CHECK (link_access IN ('viewer', 'commenter', 'editor')),
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
