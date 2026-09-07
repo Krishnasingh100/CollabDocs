@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@plugin "@tailwindcss/typography";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -128,5 +129,36 @@
   }
   html {
     @apply font-sans;
+  }
+}
+@layer base {
+  .prose {
+    --tw-prose-body: var(--foreground);
+    --tw-prose-headings: var(--foreground);
+    --tw-prose-links: var(--primary);
+    --tw-prose-bold: var(--foreground);
+    --tw-prose-quotes: var(--muted-foreground);
+    --tw-prose-quote-borders: var(--primary);
+    --tw-prose-code: var(--foreground);
+  }
+  .prose h1,
+  .prose h2,
+  .prose h3 {
+    font-family: var(--font-fraunces);
+    font-weight: 500;
+  }
+  .prose blockquote {
+    font-style: normal;
+  }
+  .prose code {
+    background-color: var(--secondary);
+    padding: 0.15em 0.4em;
+    border-radius: 4px;
+    font-size: 0.9em;
+  }
+  .prose pre {
+    background-color: var(--foreground);
+    color: var(--background);
+    border-radius: 8px;
   }
 }

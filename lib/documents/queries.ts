@@ -76,3 +76,10 @@ export async function listDocumentMembers(documentId: string) {
   );
   return result.rows;
 }
+export async function updateDocumentContent(documentId: string, content: string) {
+  const result = await pool.query(
+    `UPDATE documents SET content = $2, updated_at = now() WHERE id = $1 RETURNING *`,
+    [documentId, content]
+  );
+  return result.rows[0] ?? null;
+}

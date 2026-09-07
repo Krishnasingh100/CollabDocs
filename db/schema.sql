@@ -85,3 +85,9 @@ CREATE INDEX IF NOT EXISTS idx_document_members_document_id ON document_members(
 CREATE INDEX IF NOT EXISTS idx_document_members_user_id ON document_members(user_id);
 CREATE INDEX IF NOT EXISTS idx_comments_document_id ON comments(document_id);
 CREATE INDEX IF NOT EXISTS idx_document_versions_document_id ON document_versions(document_id);
+
+ALTER TABLE documents
+ADD COLUMN IF NOT EXISTS link_access TEXT CHECK (link_access IN ('viewer', 'commenter', 'editor'));
+
+ALTER TABLE documents
+ADD COLUMN IF NOT EXISTS content TEXT;

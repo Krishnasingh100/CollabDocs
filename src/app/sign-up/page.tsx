@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { authClient } from "@/lib/auth/client";
 import { Button } from "@/components/ui/button";
+import { OAuthButtons } from "@/components/auth/oauth-buttons";
 
 export default function SignUpPage() {
   const router = useRouter();
@@ -21,15 +22,16 @@ export default function SignUpPage() {
 
     const result = await authClient.signUp.email({ name, email, password });
 
-    setLoading(false);
-
     if (result.error) {
+      setLoading(false);
       setError(result.error.message ?? "Could not create account.");
       return;
     }
 
-    router.push("/dashboard");
-    router.refresh();
+    await authClient.emailOtp.sendVerificationOtp({ email, type: "email-verification" });
+
+    setLoading(false);
+    router.push(`/verify-email?email=${encodeURIComponent(email)}`);
   }
 
   return (
@@ -87,10 +89,14 @@ export default function SignUpPage() {
 
           {error && <p className="text-sm text-destructive">{error}</p>}
 
-          <Button type="submit" variant="default" className="w-full" disabled={loading}>
+          <Button type="submit" className="w-full" disabled={loading}>
             {loading ? "Creating account..." : "Create account"}
           </Button>
         </form>
+
+        <div className="mt-4">
+          <OAuthButtons />
+        </div>
 
         <p className="mt-6 text-center text-sm text-muted-foreground">
           Already have an account?{" "}
