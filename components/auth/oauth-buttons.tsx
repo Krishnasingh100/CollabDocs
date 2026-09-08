@@ -10,15 +10,16 @@ export function OAuthButtons() {
   async function handleGoogleSignIn() {
     setLoading(true);
     try {
-      await authClient.signIn.social({
-        provider: "google",
-        callbackURL: `${window.location.origin}/dashboard`,
-      });
+     await authClient.signIn.social({
+  provider: "google",
+  callbackURL: `${window.location.origin}/auth/callback`,
+});
     } catch (error) {
       console.error("Google sign-in error:", error);
       setLoading(false);
     }
   }
+  
 
   return (
     <div className="space-y-3">

@@ -1,5 +1,9 @@
+"use client";
+
 import Link from "next/link";
-import { FileText } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { FileText, Trash2 } from "lucide-react";
 
 function timeAgo(date: string) {
   const diffMs = Date.now() - new Date(date).getTime();
@@ -22,15 +26,42 @@ export function DocumentCard({
   title: string;
   updatedAt: string;
 }) {
+  const router = useRouter();
+  const [deleting, setDeleting] = useState(false);
+
+  async function handleDelete(e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!confirm(`Delete "${title}"? This cannot be undone.`)) return;
+
+    setDeleting(true);
+    const res = await fetch(`/api/documents/${id}`, { method: "DELETE" });
+    if (res.ok) {
+      router.refresh();
+    } else {
+      setDeleting(false);
+    }
+  }
+
   return (
     <Link
       href={`/document/${id}`}
-      className="group flex flex-col rounded-lg border border-border bg-card p-4 transition-colors hover:border-primary/40"
+      className="group relative flex flex-col rounded-lg border border-border bg-card p-4 transition-colors hover:border-primary/40"
     >
+      <button
+        onClick={handleDelete}
+        disabled={deleting}
+        className="absolute right-3 top-3 rounded p-1.5 text-muted-foreground opacity-0 hover:bg-secondary hover:text-destructive group-hover:opacity-100"
+        aria-label="Delete document"
+      >
+        <Trash2 className="h-3.5 w-3.5" />
+      </button>
+
       <div className="flex h-24 items-center justify-center rounded bg-secondary">
         <FileText className="h-8 w-8 text-muted-foreground" strokeWidth={1.5} />
       </div>
-      <p className="mt-3 truncate text-sm font-medium text-foreground group-hover:text-primary">
+      <p className="mt-3 truncate pr-6 text-sm font-medium text-foreground group-hover:text-primary">
         {title}
       </p>
       <p className="text-xs text-muted-foreground">Edited {timeAgo(updatedAt)}</p>

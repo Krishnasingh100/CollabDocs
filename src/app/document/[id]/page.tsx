@@ -2,7 +2,7 @@ import { redirect, notFound } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/sync";
 import { getDocumentAccess, canRead } from "@/lib/permissions/check";
 import { getDocumentById } from "@/lib/documents/queries";
-import { TiptapEditor } from "@/components/editor/tiptap-editor";
+import { DocumentShell } from "@/components/documents/document-shell";
 
 export default async function DocumentPage({
   params,
@@ -19,13 +19,12 @@ export default async function DocumentPage({
   const document = await getDocumentById(id);
 
   return (
-    <div className="flex h-screen flex-col">
-      <header className="flex h-14 items-center border-b border-border px-6">
-        <h1 className="font-heading text-base font-medium">{document.title}</h1>
-      </header>
-      <div className="flex-1 overflow-y-auto">
-        <TiptapEditor documentId={id} initialContent={document.content ?? ""} />
-      </div>
-    </div>
+    <DocumentShell
+      documentId={id}
+      title={document.title}
+      initialContent={document.content ?? ""}
+      role={role}
+      currentUserId={user.id}
+    />
   );
 }
