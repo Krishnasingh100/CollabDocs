@@ -8,6 +8,13 @@
       "when": 1789291278266,
       "tag": "0000_grey_smiling_tiger",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1789543301046,
+      "tag": "0001_daily_red_skull",
+      "breakpoints": true
     }
   ]
-}  
+}

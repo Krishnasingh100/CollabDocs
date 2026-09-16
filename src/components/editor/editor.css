@@ -1,0 +1,268 @@
+/* Google-Docs-like page + ProseMirror styles */
+
+.docs-editor-wrap {
+  cursor: text;
+}
+
+/* One A4-ish page: 816px wide, 1056px tall. Canvas grows taller,
+   break markers show where content flows onto next page. */
+.docs-canvas {
+  position: relative;
+}
+
+.docs-editor-wrap .tiptap {
+  min-height: 1056px;
+  padding: 48px 56px 72px;
+  outline: none;
+  font-size: 11pt;
+  line-height: 1.5;
+  color: #111;
+  caret-color: #111;
+  word-wrap: break-word;
+}
+
+.docs-page-break {
+  position: absolute;
+  right: 0;
+  left: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+  user-select: none;
+}
+
+.docs-page-break::before,
+.docs-page-break::after {
+  content: "";
+  flex: 1;
+  border-top: 2px dashed #bdc1c6;
+}
+
+.docs-page-break > span {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: #5f6368;
+  text-transform: uppercase;
+  background: #f8f9fa;
+  border: 1px solid #dadce0;
+  border-radius: 999px;
+  padding: 1px 10px;
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .docs-editor-wrap .tiptap {
+    padding: 24px 18px 48px;
+    min-height: 60vh;
+  }
+}
+
+.docs-editor-wrap .tiptap p {
+  margin: 0 0 8px;
+}
+
+.docs-editor-wrap .tiptap h1 {
+  font-size: 26pt;
+  font-weight: 600;
+  line-height: 1.2;
+  margin: 16px 0 8px;
+}
+.docs-editor-wrap .tiptap h2 {
+  font-size: 20pt;
+  font-weight: 600;
+  margin: 14px 0 8px;
+}
+.docs-editor-wrap .tiptap h3 {
+  font-size: 15pt;
+  font-weight: 600;
+  margin: 12px 0 6px;
+}
+.docs-editor-wrap .tiptap h4,
+.docs-editor-wrap .tiptap h5,
+.docs-editor-wrap .tiptap h6 {
+  font-weight: 600;
+  margin: 10px 0 6px;
+}
+
+.docs-editor-wrap .tiptap a {
+  color: #1155cc;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.docs-editor-wrap .tiptap blockquote {
+  border-left: 3px solid #dadce0;
+  margin: 12px 0;
+  padding: 4px 0 4px 16px;
+  color: #444;
+  font-style: italic;
+}
+
+.docs-editor-wrap .tiptap code {
+  background: #f1f3f4;
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 0.9em;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.docs-editor-wrap .tiptap pre {
+  background: #202124;
+  color: #e8eaed;
+  border-radius: 8px;
+  padding: 14px 16px;
+  overflow-x: auto;
+  margin: 12px 0;
+}
+.docs-editor-wrap .tiptap pre code {
+  background: transparent;
+  color: inherit;
+  padding: 0;
+}
+
+.docs-editor-wrap .tiptap ul,
+.docs-editor-wrap .tiptap ol {
+  padding-left: 28px;
+  margin: 8px 0;
+}
+.docs-editor-wrap .tiptap ul {
+  list-style: disc;
+}
+.docs-editor-wrap .tiptap ol {
+  list-style: decimal;
+}
+.docs-editor-wrap .tiptap li {
+  margin: 3px 0;
+}
+.docs-editor-wrap .tiptap li > p {
+  margin: 0;
+}
+
+/* Task list */
+.docs-editor-wrap .tiptap ul[data-type="taskList"] {
+  list-style: none;
+  padding-left: 4px;
+}
+.docs-editor-wrap .tiptap ul[data-type="taskList"] li {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+.docs-editor-wrap .tiptap ul[data-type="taskList"] li > label {
+  margin-top: 3px;
+  flex-shrink: 0;
+}
+.docs-editor-wrap .tiptap ul[data-type="taskList"] li > div {
+  flex: 1;
+}
+.docs-editor-wrap .tiptap ul[data-type="taskList"] input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: #1a73e8;
+  cursor: pointer;
+}
+
+.docs-editor-wrap .tiptap hr {
+  border: none;
+  border-top: 1px solid #dadce0;
+  margin: 20px 0;
+}
+
+.docs-editor-wrap .tiptap img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+}
+.docs-editor-wrap .tiptap img.ProseMirror-selectednode {
+  outline: 2px solid #1a73e8;
+  outline-offset: 2px;
+}
+
+/* Tables */
+.docs-editor-wrap .tiptap table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 12px 0;
+  table-layout: fixed;
+}
+.docs-editor-wrap .tiptap th,
+.docs-editor-wrap .tiptap td {
+  border: 1px solid #dadce0;
+  padding: 8px 10px;
+  vertical-align: top;
+  min-width: 60px;
+}
+.docs-editor-wrap .tiptap th {
+  background: #f1f3f4;
+  font-weight: 600;
+  text-align: left;
+}
+.docs-editor-wrap .tiptap .selectedCell {
+  background: rgba(26, 115, 232, 0.12);
+}
+.docs-editor-wrap .tiptap .column-resize-handle {
+  width: 4px;
+  background: #1a73e8;
+}
+
+/* Placeholder */
+.docs-editor-wrap .tiptap p.is-editor-empty:first-child::before,
+.docs-editor-wrap .tiptap p.is-empty::before {
+  content: attr(data-placeholder);
+  color: #9aa0a6;
+  pointer-events: none;
+  float: left;
+  height: 0;
+}
+
+/* Selection */
+.docs-editor-wrap .tiptap ::selection {
+  background: rgba(26, 115, 232, 0.2);
+}
+
+.docs-editor-wrap .tiptap:focus {
+  outline: none;
+}
+
+/* Print: only the page, real paper breaks */
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+  body * {
+    visibility: hidden;
+  }
+  .docs-page-break {
+    display: none !important;
+  }
+  .docs-canvas,
+  .docs-canvas * {
+    visibility: visible;
+  }
+  .docs-canvas {
+    position: absolute;
+    inset: 0;
+    border: none !important;
+    box-shadow: none !important;
+    max-width: none !important;
+  }
+  .docs-editor-wrap .tiptap {
+    padding: 0;
+    min-height: auto;
+  }
+  .docs-editor-wrap .tiptap table,
+  .docs-editor-wrap .tiptap img,
+  .docs-editor-wrap .tiptap pre,
+  .docs-editor-wrap .tiptap blockquote {
+    break-inside: avoid;
+  }
+  .docs-editor-wrap .tiptap h1,
+  .docs-editor-wrap .tiptap h2,
+  .docs-editor-wrap .tiptap h3 {
+    break-after: avoid;
+  }
+}
