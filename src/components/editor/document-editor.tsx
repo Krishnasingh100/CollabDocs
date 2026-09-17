@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import { Check, CloudOff, Loader2 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
@@ -13,6 +13,7 @@ import {
 } from "@/lib/documents";
 import { cn } from "@/lib/utils";
 import { EditorToolbar } from "./editor-toolbar";
+import { DEFAULT_MARGIN, MarginRuler } from "./margin-ruler";
 import { getEditorExtensions } from "./extensions";
 import "./editor.css";
 
@@ -30,6 +31,7 @@ export function DocumentEditor({ documentId }: { documentId: string }) {
   const [wordCount, setWordCount] = useState(0);
   const [pageCount, setPageCount] = useState(1);
   const [currentPage, setCurrentPage] = useState(1);
+  const [margins, setMargins] = useState({ left: DEFAULT_MARGIN, right: DEFAULT_MARGIN });
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const titleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const canvasRef = useRef<HTMLDivElement | null>(null);
@@ -39,6 +41,32 @@ export function DocumentEditor({ documentId }: { documentId: string }) {
     const h = el?.scrollHeight ?? PAGE_HEIGHT;
     setPageCount(Math.max(1, Math.ceil(h / PAGE_HEIGHT)));
   }, []);
+
+  // Side margins controlled by the ruler, persisted per document locally.
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(`collabdocs:margins:${documentId}`);
+      if (raw) {
+        const parsed = JSON.parse(raw) as { left?: number; right?: number };
+        if (typeof parsed.left === "number" && typeof parsed.right === "number") {
+          setMargins({
+            left: Math.min(Math.max(0, Math.round(parsed.left)), 300),
+            right: Math.min(Math.max(0, Math.round(parsed.right)), 300),
+          });
+        }
+      }
+    } catch {
+      // ignore corrupt storage, keep defaults
+    }
+  }, [documentId]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(`collabdocs:margins:${documentId}`, JSON.stringify(margins));
+    } catch {
+      // storage unavailable, margins stay in memory
+    }
+  }, [documentId, margins]);
 
   const editor = useEditor(
     {
@@ -235,12 +263,22 @@ export function DocumentEditor({ documentId }: { documentId: string }) {
 
       {/* Gray background, white pages with clean visible border.
           Max width 816px fixed. Height starts one page, grows infinitely.
-          Break markers show overflow flowing onto next page. */}
-      <main className="flex flex-1 justify-center bg-[#f8f9fa] px-4 py-6">
+          Break markers show overflow flowing onto next page.
+          Ruler above page controls side margins live. */}
+      <main className="flex flex-1 flex-col items-center bg-[#f8f9fa] px-4 py-6">
+        <div className="w-full max-w-[816px]">
+          <MarginRuler left={margins.left} right={margins.right} onChange={setMargins} />
+        </div>
         <div
           ref={canvasRef}
           onClick={() => editor?.chain().focus().run()}
-          className="docs-canvas w-full max-w-[816px] cursor-text border border-[#dadce0] bg-white text-black shadow-[0_1px_3px_rgba(60,64,67,0.3),0_4px_8px_rgba(60,64,67,0.15)]"
+          style={
+            {
+              "--docs-margin-left": `${margins.left}px`,
+              "--docs-margin-right": `${margins.right}px`,
+            } as CSSProperties
+          }
+          className="docs-canvas w-full max-w-[816px] cursor-text border border-[#dadce0] bg-white text-black shadow-[0_1px_3px_rgba(60,64,67,0.3),0_4px_8px_rgba(60,64,67,0.15)] sm:rounded-t-none"
         >
           {!loaded || !editor ? (
             <div className="flex min-h-[1056px] items-center justify-center gap-2 text-sm text-muted-foreground">

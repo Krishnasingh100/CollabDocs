@@ -12,7 +12,7 @@
 
 .docs-editor-wrap .tiptap {
   min-height: 1056px;
-  padding: 48px 56px 72px;
+  padding: 48px var(--docs-margin-right, 56px) 72px var(--docs-margin-left, 56px);
   outline: none;
   font-size: 11pt;
   line-height: 1.5;
