@@ -58,7 +58,7 @@ export function getEditorExtensions() {
     TaskItem.configure({ nested: true }),
     Typography,
     Placeholder.configure({
-      placeholder: "Type or paste your content here…  ( / for blocks )",
+      placeholder: "Type or paste your content here…",
     }),
     CharacterCount,
   ];

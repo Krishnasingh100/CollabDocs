@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" role="img" aria-label="Letter illustration">
+  <rect width="400" height="300" fill="#fef3c7"/>
+  <rect x="70" y="60" width="260" height="180" rx="14" fill="#ffffff"/>
+  <path d="M70 74l130 84 130-84" fill="none" stroke="#d97706" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="96" y="180" width="140" height="10" rx="5" fill="#fde68a"/>
+  <rect x="96" y="198" width="180" height="10" rx="5" fill="#fef3c7"/>
+  <rect x="282" y="176" width="34" height="40" rx="6" fill="#d97706"/>
+  <circle cx="299" cy="190" r="8" fill="#fef3c7"/>
+</svg>

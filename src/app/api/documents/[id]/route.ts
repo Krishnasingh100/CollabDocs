@@ -1,13 +1,15 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { NextRequest } from "next/server";
 import { db } from "@/db";
 import { documentsTable } from "@/db/schema";
+import { resolveOwner } from "@/lib/auth/require-user";
 
 function toDetail(row: typeof documentsTable.$inferSelect) {
   return {
     id: row.id,
     title: row.title ?? "Untitled document",
     plainText: row.plainText ?? "",
+    templateId: row.templateId ?? null,
     content: (row.content as unknown) ?? null,
     updatedAt:
       row.updatedAt instanceof Date
@@ -25,11 +27,15 @@ export async function GET(
   ctx: RouteContext<"/api/documents/[id]">,
 ) {
   const { id } = await ctx.params;
+  const owner = await resolveOwner();
+  if (!owner) return Response.json({ error: "Unauthorized" }, { status: 401 });
   try {
     const rows = await db
       .select()
       .from(documentsTable)
-      .where(eq(documentsTable.id, id))
+      .where(
+        and(eq(documentsTable.id, id), eq(documentsTable.userId, owner.ownerId)),
+      )
       .limit(1);
     const row = rows[0];
     if (!row) return Response.json({ error: "Not found" }, { status: 404 });
@@ -46,6 +52,8 @@ export async function PATCH(
   ctx: RouteContext<"/api/documents/[id]">,
 ) {
   const { id } = await ctx.params;
+  const owner = await resolveOwner();
+  if (!owner) return Response.json({ error: "Unauthorized" }, { status: 401 });
   try {
     const body = (await req.json().catch(() => ({}))) as {
       title?: string;
@@ -64,7 +72,9 @@ export async function PATCH(
           : {}),
         updatedAt: new Date(),
       })
-      .where(eq(documentsTable.id, id))
+      .where(
+        and(eq(documentsTable.id, id), eq(documentsTable.userId, owner.ownerId)),
+      )
       .returning();
     if (!row) return Response.json({ error: "Not found" }, { status: 404 });
     return Response.json({ document: toDetail(row) });
@@ -80,8 +90,14 @@ export async function DELETE(
   ctx: RouteContext<"/api/documents/[id]">,
 ) {
   const { id } = await ctx.params;
+  const owner = await resolveOwner();
+  if (!owner) return Response.json({ error: "Unauthorized" }, { status: 401 });
   try {
-    await db.delete(documentsTable).where(eq(documentsTable.id, id));
+    await db
+      .delete(documentsTable)
+      .where(
+        and(eq(documentsTable.id, id), eq(documentsTable.userId, owner.ownerId)),
+      );
     return Response.json({ ok: true });
   } catch (error) {
     const message =

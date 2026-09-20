@@ -9,6 +9,7 @@ import {
   AlignRight,
   Bold,
   Code,
+  Download,
   Eraser,
   Highlighter,
   Image as ImageIcon,
@@ -43,6 +44,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { downloadDocument, type DownloadFormat } from "./download";
 import {
   FONT_FAMILIES,
   FONT_SIZES,
@@ -137,13 +139,14 @@ function NativeSelect({
   );
 }
 
-export function EditorToolbar({ editor }: { editor: Editor | null }) {
+export function EditorToolbar({ editor, title }: { editor: Editor | null; title?: string }) {
   const [, force] = useState(0);
   const [linkUrl, setLinkUrl] = useState("");
   const [linkOpen, setLinkOpen] = useState(false);
   const [imageUrl, setImageUrl] = useState("");
   const [imageOpen, setImageOpen] = useState(false);
   const [tableOpen, setTableOpen] = useState(false);
+  const [downloadOpen, setDownloadOpen] = useState(false);
 
   useEffect(() => {
     if (!editor) return;
@@ -243,7 +246,7 @@ export function EditorToolbar({ editor }: { editor: Editor | null }) {
 
   return (
     <div
-      className="sticky top-12 z-30 border-b border-border/70 bg-background/95 backdrop-blur"
+      className="sticky top-20 z-30 border-b border-border/70 bg-background/95 backdrop-blur"
       role="toolbar"
       aria-label="Document formatting toolbar"
     >
@@ -254,6 +257,44 @@ export function EditorToolbar({ editor }: { editor: Editor | null }) {
         <Tool tip="Redo (Ctrl+Y)" onClick={() => editor.chain().focus().redo().run()} disabled={!editor.can().redo()}>
           <Redo />
         </Tool>
+
+        {/* Download */}
+        <Popover open={downloadOpen} onOpenChange={setDownloadOpen}>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <PopoverTrigger render={<Button variant="ghost" size="icon-sm" aria-label="Download document"><Download /></Button>} />
+              }
+            />
+            <TooltipContent side="bottom">Download</TooltipContent>
+          </Tooltip>
+          <PopoverContent align="start" className="w-52">
+            <p className="text-xs font-medium">Download</p>
+            <div className="grid gap-1">
+              {(
+                [
+                  { label: "PDF document (.pdf)", format: "pdf" },
+                  { label: "Web page (.html)", format: "html" },
+                  { label: "Plain text (.txt)", format: "txt" },
+                  { label: "JSON (.json)", format: "json" },
+                ] as { label: string; format: DownloadFormat }[]
+              ).map((o) => (
+                <Button
+                  key={o.format}
+                  variant="ghost"
+                  size="sm"
+                  className="justify-start"
+                  onClick={() => {
+                    downloadDocument(editor, title ?? "Untitled document", o.format);
+                    setDownloadOpen(false);
+                  }}
+                >
+                  {o.label}
+                </Button>
+              ))}
+            </div>
+          </PopoverContent>
+        </Popover>
         <Divider />
 
         <NativeSelect

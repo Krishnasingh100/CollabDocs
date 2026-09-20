@@ -13,15 +13,14 @@ export function Hero() {
       <div className="relative mx-auto flex w-full max-w-5xl flex-col items-center gap-6 px-4 py-20 text-center md:py-24">
         <Badge variant="secondary" className="border border-primary/20 bg-secondary">
           <span className="mr-1.5 inline-block size-2 rounded-full bg-primary" />
-          Personal first, organizations next
+          Personal docs · Templates · Export
         </Badge>
         <h1 className="max-w-2xl text-4xl font-semibold tracking-tight text-balance md:text-5xl">
-          Documents your team <span className="text-primary">edits together</span>
+          Your documents, <span className="text-primary">ready to write</span>
         </h1>
         <p className="max-w-xl text-lg text-muted-foreground">
-          CollabDocs is a document editor with personal workspaces today and shared
-          organization workspaces next. Real-time editing, comments, and read-write
-          permissions included.
+          CollabDocs is a personal document editor with starter templates, a
+          clean page view, and one-click export to PDF, HTML, text, or JSON.
         </p>
         <div className="flex flex-col gap-3 sm:flex-row">
           <Button size="lg" render={<Link href="/sign-up" />}>
@@ -37,35 +36,14 @@ export function Hero() {
             <span className="size-2.5 rounded-full bg-amber-500/70" />
             <span className="size-2.5 rounded-full bg-teal-500/70" />
             <span className="ml-2 text-xs text-muted-foreground">Q3 planning doc</span>
-            <span className="ml-auto flex -space-x-1.5">
-              <span className="flex size-6 items-center justify-center rounded-full border-2 border-card bg-emerald-600/85 text-[10px] font-semibold text-white">
-                A
-              </span>
-              <span className="flex size-6 items-center justify-center rounded-full border-2 border-card bg-amber-600/85 text-[10px] font-semibold text-white">
-                J
-              </span>
-              <span className="flex size-6 items-center justify-center rounded-full border-2 border-card bg-teal-700/85 text-[10px] font-semibold text-white">
-                R
-              </span>
-            </span>
           </div>
           <p className="pt-3 text-sm leading-7 text-muted-foreground">
-            <span className="rounded bg-emerald-600/10 px-1 font-medium text-emerald-800 dark:text-emerald-200">
-              Anna is editing
-            </span>{" "}
-            the launch checklist while{" "}
-            <span className="rounded bg-amber-600/10 px-1 font-medium text-amber-800 dark:text-amber-200">
-              Jon comments
-            </span>{" "}
-            on permissions and{" "}
-            <span className="rounded bg-teal-700/10 px-1 font-medium text-teal-900 dark:text-teal-200">
-              Ria reviews
-            </span>{" "}
-            — all in one place.
+            Start from a template, write on clean pages, and export to PDF —
+            all in one place.
           </p>
         </div>
         <p className="text-sm text-muted-foreground">
-          Authentication by Clerk, editing by Tiptap, real-time by Liveblocks.
+          Sign-in by Neon Auth, editing by Tiptap, storage on Neon Postgres.
         </p>
       </div>
     </section>

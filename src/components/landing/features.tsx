@@ -1,24 +1,24 @@
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { MessagesSquare, PenLine, ShieldCheck } from "lucide-react";
+import { LayoutTemplate, PenLine, ShieldCheck } from "lucide-react";
 
 const items = [
   {
     icon: PenLine,
     chip: "bg-emerald-600/10 text-emerald-800 dark:text-emerald-200",
-    title: "Real-time editing",
-    detail: "Many cursors in one document. Live presence and updates by Liveblocks.",
+    title: "Rich text editor",
+    detail: "Headings, tables, images, lists, and formatting with Tiptap. Fast and familiar.",
   },
   {
-    icon: MessagesSquare,
+    icon: LayoutTemplate,
     chip: "bg-amber-600/10 text-amber-800 dark:text-amber-200",
-    title: "Rich text editor",
-    detail: "Headings, lists, and formatting with Tiptap. Fast and familiar.",
+    title: "Starter templates",
+    detail: "Reports, notes, resumes, letters, and proposals — each with matching page content.",
   },
   {
     icon: ShieldCheck,
     chip: "bg-teal-700/10 text-teal-900 dark:text-teal-200",
     title: "Secure by default",
-    detail: "Sign in with Clerk. Owners control read or write access per document.",
+    detail: "Sign in with Neon Auth. Documents stay private to your account.",
   },
 ];
 
@@ -31,9 +31,9 @@ export function Features() {
     >
       <div className="mx-auto w-full max-w-5xl px-4 py-16">
       <p className="text-sm font-medium text-primary">FEATURES</p>
-      <h2 id="features-heading" className="mt-2 text-3xl font-semibold tracking-tight">
-        Everything needed to write together
-      </h2>
+        <h2 id="features-heading" className="mt-2 text-3xl font-semibold tracking-tight">
+          Everything needed to write
+        </h2>
       <div className="mt-8 grid gap-4 md:grid-cols-3">
         {items.map((item) => (
           <Card key={item.title} className="transition-colors hover:border-primary/30">

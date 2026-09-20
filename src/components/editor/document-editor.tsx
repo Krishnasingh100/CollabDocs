@@ -14,6 +14,8 @@ import {
 import { cn } from "@/lib/utils";
 import { EditorToolbar } from "./editor-toolbar";
 import { DEFAULT_MARGIN, MarginRuler } from "./margin-ruler";
+import { DocumentMenubar } from "./document-menubar";
+import { AccountMenu } from "@/components/auth/account-menu";
 import { getEditorExtensions } from "./extensions";
 import "./editor.css";
 
@@ -34,6 +36,7 @@ export function DocumentEditor({ documentId }: { documentId: string }) {
   const [margins, setMargins] = useState({ left: DEFAULT_MARGIN, right: DEFAULT_MARGIN });
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const titleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const titleRef = useRef<HTMLInputElement | null>(null);
   const canvasRef = useRef<HTMLDivElement | null>(null);
 
   const recalcPages = useCallback(() => {
@@ -43,21 +46,25 @@ export function DocumentEditor({ documentId }: { documentId: string }) {
   }, []);
 
   // Side margins controlled by the ruler, persisted per document locally.
+  // Read storage on a macrotask so the initial sync render stays pure.
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(`collabdocs:margins:${documentId}`);
-      if (raw) {
-        const parsed = JSON.parse(raw) as { left?: number; right?: number };
-        if (typeof parsed.left === "number" && typeof parsed.right === "number") {
-          setMargins({
-            left: Math.min(Math.max(0, Math.round(parsed.left)), 300),
-            right: Math.min(Math.max(0, Math.round(parsed.right)), 300),
-          });
+    const t = setTimeout(() => {
+      try {
+        const raw = localStorage.getItem(`collabdocs:margins:${documentId}`);
+        if (raw) {
+          const parsed = JSON.parse(raw) as { left?: number; right?: number };
+          if (typeof parsed.left === "number" && typeof parsed.right === "number") {
+            setMargins({
+              left: Math.min(Math.max(0, Math.round(parsed.left)), 300),
+              right: Math.min(Math.max(0, Math.round(parsed.right)), 300),
+            });
+          }
         }
+      } catch {
+        // ignore corrupt storage, keep defaults
       }
-    } catch {
-      // ignore corrupt storage, keep defaults
-    }
+    }, 0);
+    return () => clearTimeout(t);
   }, [documentId]);
 
   useEffect(() => {
@@ -122,6 +129,37 @@ export function DocumentEditor({ documentId }: { documentId: string }) {
     },
     [documentId, title],
   );
+
+  // Flush any pending autosave immediately (File > Save, Ctrl+S).
+  const saveNow = useCallback(() => {
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    if (!editor) return;
+    setSaveState("saving");
+    void persist(editor.getJSON() as TipTapDoc, editor.getText());
+  }, [editor, persist]);
+
+  const focusTitle = useCallback(() => {
+    // The menubar restores focus to its trigger when it closes, which would
+    // steal focus back from the title input. Defer past the close so the
+    // cursor lands in the title with the current name (e.g. "Untitled
+    // document") selected and ready to type over.
+    window.setTimeout(() => {
+      titleRef.current?.focus();
+      titleRef.current?.select();
+    }, 60);
+  }, []);
+
+  // Ctrl+S / Cmd+S saves now instead of opening the browser dialog.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        saveNow();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [saveNow]);
 
   // Load once: API first, localStorage fallback
   useEffect(() => {
@@ -235,6 +273,7 @@ export function DocumentEditor({ documentId }: { documentId: string }) {
           <SidebarTrigger className="shrink-0" />
           <Separator orientation="vertical" className="h-6 shrink-0" />
           <input
+            ref={titleRef}
             value={title}
             onChange={(e) => saveTitle(e.target.value)}
             aria-label="Document title"
@@ -256,10 +295,22 @@ export function DocumentEditor({ documentId }: { documentId: string }) {
               </>
             )}
           </span>
+          <span className="ml-auto flex shrink-0 items-center">
+            <AccountMenu />
+          </span>
+        </div>
+        <div className="flex h-8 items-center overflow-x-auto px-3">
+          <DocumentMenubar
+            editor={editor}
+            documentId={documentId}
+            title={title}
+            onSave={saveNow}
+            onRename={focusTitle}
+          />
         </div>
       </header>
 
-      <EditorToolbar editor={editor} />
+      <EditorToolbar editor={editor} title={title} />
 
       {/* Gray background, white pages with clean visible border.
           Max width 816px fixed. Height starts one page, grows infinitely.

@@ -1,5 +1,5 @@
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Building2, KeyRound, NotebookPen } from "lucide-react";
+import { LayoutTemplate, NotebookPen, Printer } from "lucide-react";
 
 const items = [
   {
@@ -9,16 +9,16 @@ const items = [
     detail: "Private documents for one account. Create, edit, and organize without sharing.",
   },
   {
-    icon: Building2,
+    icon: LayoutTemplate,
     chip: "bg-amber-600/10 text-amber-800 dark:text-amber-200",
-    title: "Organization workspace",
-    detail: "Many people work in the same document at once with live presence and updates.",
+    title: "Template gallery",
+    detail: "Start from a report, meeting notes, resume, letter, or proposal — or a blank page.",
   },
   {
-    icon: KeyRound,
+    icon: Printer,
     chip: "bg-teal-700/10 text-teal-900 dark:text-teal-200",
-    title: "Comments and permissions",
-    detail: "Comment on any section. Owners grant read or write access per document.",
+    title: "Export and print",
+    detail: "Download as PDF, HTML, text, or JSON, or print clean pages.",
   },
 ];
 
@@ -35,9 +35,8 @@ export function About() {
         About CollabDocs
       </h2>
       <p className="mt-3 max-w-2xl text-muted-foreground">
-        CollabDocs starts with a personal document editor, then adds organization collaboration.
-        Authentication uses Clerk, the editor uses Tiptap, and real-time communication uses
-        Liveblocks.
+        CollabDocs is a personal document editor. Sign-in uses Neon Auth, the
+        editor uses Tiptap, and documents are stored on Neon Postgres.
       </p>
       <div className="mt-8 grid gap-4 md:grid-cols-3">
         {items.map((item) => (

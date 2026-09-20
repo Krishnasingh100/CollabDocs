@@ -1,7 +1,18 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { FileText, Loader2, Plus, Search, Trash2 } from "lucide-react";
+import {
+  BarChart3,
+  Briefcase,
+  ClipboardList,
+  FileText,
+  Loader2,
+  Mail,
+  Plus,
+  Search,
+  Trash2,
+  UserRound,
+} from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -12,9 +23,22 @@ import {
   createLocalDocument,
   deleteLocalDocument,
   listLocalDocuments,
+  saveLocalDocument,
   type DocumentDetail,
   type DocumentSummary,
 } from "@/lib/documents";
+import { TEMPLATES, type DocumentTemplate } from "@/components/documents/templates";
+import { TemplateThumbnail } from "@/components/documents/template-thumbnail";
+import { AccountMenu } from "@/components/auth/account-menu";
+
+const TEMPLATE_ICONS = {
+  blank: Plus,
+  report: BarChart3,
+  "meeting-notes": ClipboardList,
+  resume: UserRound,
+  letter: Mail,
+  proposal: Briefcase,
+} as const;
 
 export default function DocumentsPage() {
   const router = useRouter();
@@ -55,13 +79,18 @@ export default function DocumentsPage() {
     );
   }, [docs, query]);
 
-  const createDoc = async () => {
+  const createFromTemplate = async (t: DocumentTemplate) => {
     setCreating(true);
     try {
       const res = await fetch("/api/documents", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: "Untitled document" }),
+        body: JSON.stringify({
+          title: t.title,
+          content: t.content,
+          plainText: t.plainText,
+          templateId: t.id,
+        }),
       });
       if (res.ok) {
         const data = (await res.json()) as { document: DocumentDetail };
@@ -70,7 +99,10 @@ export default function DocumentsPage() {
       }
       throw new Error("api failed");
     } catch {
-      const local = createLocalDocument();
+      const local = createLocalDocument(t.title, t.id);
+      if (t.content) {
+        saveLocalDocument({ ...local, content: t.content, plainText: t.plainText });
+      }
       router.push(`/documents/${local.id}`);
     } finally {
       setCreating(false);
@@ -103,31 +135,50 @@ export default function DocumentsPage() {
               aria-label="Search documents"
             />
           </div>
+          <AccountMenu />
         </div>
       </div>
 
-      {loading ? (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" /> Loading documents…
+      <section aria-label="Template gallery" className="flex flex-col gap-3">
+        <h2 className="text-sm font-medium text-muted-foreground">
+          Start a new document
+        </h2>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          {TEMPLATES.map((t) => {
+            const Icon = TEMPLATE_ICONS[t.id as keyof typeof TEMPLATE_ICONS] ?? FileText;
+            return (
+              <button
+                key={t.id}
+                onClick={() => createFromTemplate(t)}
+                disabled={creating}
+                title={t.tagline}
+                className="group flex flex-col gap-2 rounded-lg text-left outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
+              >
+                <TemplateThumbnail template={t} />
+                <span className="flex items-center gap-1.5 px-0.5 text-sm font-medium group-hover:underline">
+                  <Icon className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+                  <span className="truncate">{t.name}</span>
+                </span>
+              </button>
+            );
+          })}
         </div>
-      ) : filtered.length === 0 ? (
-        <Card className="flex flex-col items-center gap-3 p-10 text-center">
-          <span className="flex size-12 items-center justify-center rounded-xl bg-muted">
-            <FileText className="size-6 text-muted-foreground" />
-          </span>
-          <div>
-            <p className="font-medium">No documents yet</p>
-            <p className="text-sm text-muted-foreground">
-              Create your first Google-Docs-style document.
-            </p>
+      </section>
+
+      <section aria-label="Recent documents" className="flex flex-col gap-3">
+        <h2 className="text-sm font-medium text-muted-foreground">
+          Recent documents
+        </h2>
+        {loading ? (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="size-4 animate-spin" /> Loading documents…
           </div>
-          <Button onClick={createDoc} disabled={creating}>
-            {creating ? <Loader2 className="animate-spin" /> : <Plus />}
-            Create document
-          </Button>
-        </Card>
-      ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        ) : filtered.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            {query ? "No matches." : "No documents yet — pick a template above."}
+          </p>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((d) => (
             <Card key={d.id} className="group flex flex-col gap-2 p-4">
               <Link href={`/documents/${d.id}`} className="flex flex-1 flex-col gap-1.5">
@@ -154,8 +205,9 @@ export default function DocumentsPage() {
               </div>
             </Card>
           ))}
-        </div>
-      )}
+          </div>
+        )}
+      </section>
     </div>
   );
 }

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" role="img" aria-label="Proposal illustration">
+  <rect width="400" height="300" fill="#ccfbf1"/>
+  <circle cx="200" cy="140" r="76" fill="#ffffff"/>
+  <circle cx="200" cy="140" r="54" fill="#99f6e4"/>
+  <circle cx="200" cy="140" r="32" fill="#0d9488"/>
+  <circle cx="200" cy="140" r="11" fill="#ffffff"/>
+  <rect x="96" y="232" width="90" height="14" rx="7" fill="#0d9488"/>
+  <rect x="196" y="232" width="130" height="14" rx="7" fill="#5eead4"/>
+  <rect x="130" y="40" width="140" height="14" rx="7" fill="#0d9488" opacity="0.55"/>
+</svg>

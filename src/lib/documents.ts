@@ -6,6 +6,7 @@ export type DocumentSummary = {
   id: string;
   title: string;
   plainText: string;
+  templateId?: string | null;
   updatedAt: string;
   createdAt: string;
 };
@@ -70,13 +71,17 @@ export function deleteLocalDocument(id: string) {
   writeStore(readStore().filter((d) => d.id !== id));
 }
 
-export function createLocalDocument(title = "Untitled document"): DocumentDetail {
+export function createLocalDocument(
+  title = "Untitled document",
+  templateId: string | null = null,
+): DocumentDetail {
   const now = new Date().toISOString();
   const doc: DocumentDetail = {
     id: newLocalId(),
     title,
     content: null,
     plainText: "",
+    templateId,
     createdAt: now,
     updatedAt: now,
   };

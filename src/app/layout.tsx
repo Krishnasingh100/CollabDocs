@@ -17,9 +17,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "CollabDocs — Personal docs now, teamwork next",
+  title: "CollabDocs — Write, organize, export",
   description:
-    "CollabDocs is a document editor with personal workspaces today and shared organization workspaces next. Real-time editing, comments, and read-write permissions.",
+    "CollabDocs is a personal document editor with starter templates, a clean page view, and one-click export to PDF, HTML, text, or JSON.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
