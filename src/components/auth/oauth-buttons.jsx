@@ -66,7 +66,7 @@ export function OAuthButtons() {
         // host: Neon Auth was never configured in .env.
         setError(
           raw.includes("Could not resolve authentication server hostname")
-            ? "Cannot reach the auth server — Neon Auth is not configured. Add NEON_AUTH_BASE_URL and NEON_AUTH_COOKIE_SECRET to .env, then restart the dev server."
+            ? "Cannot reach the sign-in service — auth is not configured for this app. (Owner: set NEON_AUTH_BASE_URL and NEON_AUTH_COOKIE_SECRET, then redeploy.)"
             : raw,
         );
       }

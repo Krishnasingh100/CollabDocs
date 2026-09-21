@@ -34,7 +34,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { downloadDocument } from "./download";
+import { downloadData, downloadDocument } from "./download";
 import {
   FONT_FAMILIES,
   FONT_SIZES,
@@ -95,7 +95,7 @@ function NativeSelect({ value, onChange, options, tip, className, ariaLabel }) {
     </Tooltip>
   );
 }
-export function EditorToolbar({ editor, title }) {
+export function EditorToolbar({ editor, title, getExportData }) {
   const [, force] = useState(0);
   const [linkUrl, setLinkUrl] = useState("");
   const [linkOpen, setLinkOpen] = useState(false);
@@ -103,6 +103,18 @@ export function EditorToolbar({ editor, title }) {
   const [imageOpen, setImageOpen] = useState(false);
   const [tableOpen, setTableOpen] = useState(false);
   const [downloadOpen, setDownloadOpen] = useState(false);
+  const doDownload = (format) => {
+    if (getExportData) {
+      const data = getExportData();
+      if (data) {
+        downloadData(data, title ?? "Untitled document", format);
+        setDownloadOpen(false);
+        return;
+      }
+    }
+    downloadDocument(editor, title ?? "Untitled document", format);
+    setDownloadOpen(false);
+  };
   useEffect(() => {
     if (!editor) return;
     // Selection + transaction + update can fire several times per
@@ -249,10 +261,7 @@ export function EditorToolbar({ editor, title }) {
                   variant="ghost"
                   size="sm"
                   className="justify-start"
-                  onClick={() => {
-                    downloadDocument(editor, title ?? "Untitled document", o.format);
-                    setDownloadOpen(false);
-                  }}
+                  onClick={() => doDownload(o.format)}
                 >
                   {o.label}
                 </Button>

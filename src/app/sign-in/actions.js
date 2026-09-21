@@ -3,9 +3,9 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth/server";
 function friendlyAuthError(raw) {
   // DNS failure means the app is still pointed at the placeholder auth
-  // host: Neon Auth was never configured in .env.
+  // host: Neon Auth was never configured for this deployment.
   if (raw.includes("Could not resolve authentication server hostname")) {
-    return "Cannot reach the auth server — Neon Auth is not configured. Add NEON_AUTH_BASE_URL and NEON_AUTH_COOKIE_SECRET to .env, then restart the dev server.";
+    return "Cannot reach the sign-in service — auth is not configured for this app. (Owner: set NEON_AUTH_BASE_URL and NEON_AUTH_COOKIE_SECRET, then redeploy.)";
   }
   return raw;
 }

@@ -1050,7 +1050,7 @@ export function DocumentEditor({ documentId }) {
         </div>
       </header>
 
-      <EditorToolbar editor={activeEditor} title={title} />
+      <EditorToolbar editor={activeEditor} title={title} getExportData={getExportData} />
 
       {/* Real separate sheets: page 1 fills to its limit, then overflow
           flows into a newly created page 2 below it — like Word. */}
