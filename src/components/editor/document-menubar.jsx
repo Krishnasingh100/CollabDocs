@@ -24,8 +24,8 @@ import {
   MenubarTrigger,
 } from "@/components/ui/menubar";
 import { createLocalDocument, deleteLocalDocument } from "@/lib/documents";
-import { downloadDocument } from "./download";
-export function DocumentMenubar({ editor, documentId, title, onSave, onRename }) {
+import { downloadData, downloadDocument } from "./download";
+export function DocumentMenubar({ editor, documentId, title, onSave, onRename, getExportData }) {
   const router = useRouter();
   const [, force] = useState(0);
   const [imageOpen, setImageOpen] = useState(false);
@@ -75,6 +75,16 @@ export function DocumentMenubar({ editor, documentId, title, onSave, onRename })
     }
     router.push("/documents");
   };
+  const doDownload = (format) => {
+    if (getExportData) {
+      const data = getExportData();
+      if (data) {
+        downloadData(data, title, format);
+        return;
+      }
+    }
+    downloadDocument(editor, title, format);
+  };
   const applyStyle = (v) => {
     if (!editor) return;
     if (v === "p") editor.chain().focus().setParagraph().run();
@@ -112,18 +122,10 @@ export function DocumentMenubar({ editor, documentId, title, onSave, onRename })
             <MenubarSub>
               <MenubarSubTrigger disabled={!editor}>Download</MenubarSubTrigger>
               <MenubarSubContent>
-                <MenubarItem onClick={() => downloadDocument(editor, title, "pdf")}>
-                  PDF document (.pdf)
-                </MenubarItem>
-                <MenubarItem onClick={() => downloadDocument(editor, title, "html")}>
-                  Web page (.html)
-                </MenubarItem>
-                <MenubarItem onClick={() => downloadDocument(editor, title, "txt")}>
-                  Plain text (.txt)
-                </MenubarItem>
-                <MenubarItem onClick={() => downloadDocument(editor, title, "json")}>
-                  JSON (.json)
-                </MenubarItem>
+                <MenubarItem onClick={() => doDownload("pdf")}>PDF document (.pdf)</MenubarItem>
+                <MenubarItem onClick={() => doDownload("html")}>Web page (.html)</MenubarItem>
+                <MenubarItem onClick={() => doDownload("txt")}>Plain text (.txt)</MenubarItem>
+                <MenubarItem onClick={() => doDownload("json")}>JSON (.json)</MenubarItem>
               </MenubarSubContent>
             </MenubarSub>
             <MenubarItem onClick={createDoc}>New document</MenubarItem>

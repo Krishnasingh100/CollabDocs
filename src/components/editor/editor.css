@@ -1,35 +1,38 @@
-/* Google-Docs-like page + ProseMirror styles */
+/* Google-Docs-like real pages + ProseMirror styles.
+   Each sheet is its own page: fixed Letter height, own editor, clipped
+   overflow. Sheets stack in normal flow with a gray gap — no overlay, so
+   text can never render between pages. */
 
-.docs-editor-wrap {
-  cursor: text;
-}
-
-/* One A4-ish page: 816px wide, 1056px tall. Pages stack with a gray
-   gap. Content flows onto next sheet. No overlay line through text. */
-.docs-stack {
+.docs-pages {
   position: relative;
   width: 100%;
 }
 
 .docs-sheet {
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: 1056px;
+  position: relative;
+  width: 100%;
+  min-height: 1056px;
+  overflow: hidden;
   background: #fff;
   border: 1px solid #d7dae0;
+  border-radius: 2px;
   box-shadow:
     0 1px 3px rgba(60, 64, 67, 0.3),
     0 4px 12px rgba(60, 64, 67, 0.12);
+  margin: 0 0 24px;
+  cursor: text;
 }
 
-.docs-editor-overlay {
-  position: relative;
-  z-index: 10;
-  background: transparent;
+.docs-sheet:last-child {
+  margin-bottom: 0;
 }
 
-.docs-editor-wrap .tiptap {
+.docs-page-wrap {
+  cursor: text;
+}
+
+/* One A4-ish page: 816px wide, 1056px tall. */
+.docs-page-wrap .tiptap {
   box-sizing: border-box;
   min-height: 1056px;
   padding: 48px var(--docs-margin-right, 56px) 48px var(--docs-margin-left, 56px);
@@ -43,61 +46,47 @@
   position: relative;
 }
 
-/* Page gap spacers are inline margin-top on block nodes. Print
-   restores continuous flow. */
-@media print {
-  .docs-stack {
-    height: auto !important;
-  }
-  .docs-sheet {
-    display: none !important;
-  }
-  .docs-editor-wrap .tiptap > * {
-    margin-top: 0 !important;
-  }
-}
-
 @media (max-width: 640px) {
-  .docs-editor-wrap .tiptap {
+  .docs-page-wrap .tiptap {
     padding: 24px 18px 48px;
     min-height: 60vh;
   }
 }
 
-.docs-editor-wrap .tiptap p {
+.docs-page-wrap .tiptap p {
   margin: 0 0 8px;
 }
 
-.docs-editor-wrap .tiptap h1 {
+.docs-page-wrap .tiptap h1 {
   font-size: 26pt;
   font-weight: 600;
   line-height: 1.2;
   margin: 16px 0 8px;
 }
-.docs-editor-wrap .tiptap h2 {
+.docs-page-wrap .tiptap h2 {
   font-size: 20pt;
   font-weight: 600;
   margin: 14px 0 8px;
 }
-.docs-editor-wrap .tiptap h3 {
+.docs-page-wrap .tiptap h3 {
   font-size: 15pt;
   font-weight: 600;
   margin: 12px 0 6px;
 }
-.docs-editor-wrap .tiptap h4,
-.docs-editor-wrap .tiptap h5,
-.docs-editor-wrap .tiptap h6 {
+.docs-page-wrap .tiptap h4,
+.docs-page-wrap .tiptap h5,
+.docs-page-wrap .tiptap h6 {
   font-weight: 600;
   margin: 10px 0 6px;
 }
 
-.docs-editor-wrap .tiptap a {
+.docs-page-wrap .tiptap a {
   color: #1155cc;
   text-decoration: underline;
   cursor: pointer;
 }
 
-.docs-editor-wrap .tiptap blockquote {
+.docs-page-wrap .tiptap blockquote {
   border-left: 3px solid #dadce0;
   margin: 12px 0;
   padding: 4px 0 4px 16px;
@@ -105,7 +94,7 @@
   font-style: italic;
 }
 
-.docs-editor-wrap .tiptap code {
+.docs-page-wrap .tiptap code {
   background: #f1f3f4;
   border-radius: 4px;
   padding: 1px 5px;
@@ -113,7 +102,7 @@
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
-.docs-editor-wrap .tiptap pre {
+.docs-page-wrap .tiptap pre {
   background: #202124;
   color: #e8eaed;
   border-radius: 8px;
@@ -121,100 +110,100 @@
   overflow-x: auto;
   margin: 12px 0;
 }
-.docs-editor-wrap .tiptap pre code {
+.docs-page-wrap .tiptap pre code {
   background: transparent;
   color: inherit;
   padding: 0;
 }
 
-.docs-editor-wrap .tiptap ul,
-.docs-editor-wrap .tiptap ol {
+.docs-page-wrap .tiptap ul,
+.docs-page-wrap .tiptap ol {
   padding-left: 28px;
   margin: 8px 0;
 }
-.docs-editor-wrap .tiptap ul {
+.docs-page-wrap .tiptap ul {
   list-style: disc;
 }
-.docs-editor-wrap .tiptap ol {
+.docs-page-wrap .tiptap ol {
   list-style: decimal;
 }
-.docs-editor-wrap .tiptap li {
+.docs-page-wrap .tiptap li {
   margin: 3px 0;
 }
-.docs-editor-wrap .tiptap li > p {
+.docs-page-wrap .tiptap li > p {
   margin: 0;
 }
 
 /* Task list */
-.docs-editor-wrap .tiptap ul[data-type="taskList"] {
+.docs-page-wrap .tiptap ul[data-type="taskList"] {
   list-style: none;
   padding-left: 4px;
 }
-.docs-editor-wrap .tiptap ul[data-type="taskList"] li {
+.docs-page-wrap .tiptap ul[data-type="taskList"] li {
   display: flex;
   gap: 8px;
   align-items: flex-start;
 }
-.docs-editor-wrap .tiptap ul[data-type="taskList"] li > label {
+.docs-page-wrap .tiptap ul[data-type="taskList"] li > label {
   margin-top: 3px;
   flex-shrink: 0;
 }
-.docs-editor-wrap .tiptap ul[data-type="taskList"] li > div {
+.docs-page-wrap .tiptap ul[data-type="taskList"] li > div {
   flex: 1;
 }
-.docs-editor-wrap .tiptap ul[data-type="taskList"] input[type="checkbox"] {
+.docs-page-wrap .tiptap ul[data-type="taskList"] input[type="checkbox"] {
   width: 16px;
   height: 16px;
   accent-color: #1a73e8;
   cursor: pointer;
 }
 
-.docs-editor-wrap .tiptap hr {
+.docs-page-wrap .tiptap hr {
   border: none;
   border-top: 1px solid #dadce0;
   margin: 20px 0;
 }
 
-.docs-editor-wrap .tiptap img {
+.docs-page-wrap .tiptap img {
   max-width: 100%;
   height: auto;
   border-radius: 4px;
 }
-.docs-editor-wrap .tiptap img.ProseMirror-selectednode {
+.docs-page-wrap .tiptap img.ProseMirror-selectednode {
   outline: 2px solid #1a73e8;
   outline-offset: 2px;
 }
 
 /* Tables */
-.docs-editor-wrap .tiptap table {
+.docs-page-wrap .tiptap table {
   border-collapse: collapse;
   width: 100%;
   margin: 12px 0;
   table-layout: fixed;
 }
-.docs-editor-wrap .tiptap th,
-.docs-editor-wrap .tiptap td {
+.docs-page-wrap .tiptap th,
+.docs-page-wrap .tiptap td {
   border: 1px solid #dadce0;
   padding: 8px 10px;
   vertical-align: top;
   min-width: 60px;
 }
-.docs-editor-wrap .tiptap th {
+.docs-page-wrap .tiptap th {
   background: #f1f3f4;
   font-weight: 600;
   text-align: left;
 }
-.docs-editor-wrap .tiptap .selectedCell {
+.docs-page-wrap .tiptap .selectedCell {
   background: rgba(26, 115, 232, 0.12);
 }
-.docs-editor-wrap .tiptap .column-resize-handle {
+.docs-page-wrap .tiptap .column-resize-handle {
   width: 4px;
   background: #1a73e8;
 }
 
 /* Placeholder */
-.docs-editor-wrap .tiptap p.is-editor-empty:first-child::before,
-.docs-editor-wrap .tiptap p.is-empty::before {
+.docs-page-wrap .tiptap p.is-editor-empty:first-child::before,
+.docs-page-wrap .tiptap p.is-empty::before {
   content: attr(data-placeholder);
   color: #9aa0a6;
   pointer-events: none;
@@ -223,15 +212,15 @@
 }
 
 /* Selection */
-.docs-editor-wrap .tiptap ::selection {
+.docs-page-wrap .tiptap ::selection {
   background: rgba(26, 115, 232, 0.2);
 }
 
-.docs-editor-wrap .tiptap:focus {
+.docs-page-wrap .tiptap:focus {
   outline: none;
 }
 
-/* Print: only the page, real paper breaks */
+/* Print: every sheet becomes a real paper page. */
 @media print {
   @page {
     size: A4;
@@ -240,30 +229,42 @@
   body * {
     visibility: hidden;
   }
-  .docs-stack,
-  .docs-stack * {
+  .docs-pages,
+  .docs-pages * {
     visibility: visible;
   }
-  .docs-stack {
+  .docs-pages {
     position: absolute;
     inset: 0;
     border: none !important;
     box-shadow: none !important;
     max-width: none !important;
   }
-  .docs-editor-wrap .tiptap {
+  .docs-sheet {
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+    margin: 0 0 10mm !important;
+    overflow: visible !important;
+    min-height: auto !important;
+    break-after: page;
+  }
+  .docs-sheet:last-child {
+    break-after: auto;
+  }
+  .docs-page-wrap .tiptap {
     padding: 0;
     min-height: auto;
   }
-  .docs-editor-wrap .tiptap table,
-  .docs-editor-wrap .tiptap img,
-  .docs-editor-wrap .tiptap pre,
-  .docs-editor-wrap .tiptap blockquote {
+  .docs-page-wrap .tiptap table,
+  .docs-page-wrap .tiptap img,
+  .docs-page-wrap .tiptap pre,
+  .docs-page-wrap .tiptap blockquote {
     break-inside: avoid;
   }
-  .docs-editor-wrap .tiptap h1,
-  .docs-editor-wrap .tiptap h2,
-  .docs-editor-wrap .tiptap h3 {
+  .docs-page-wrap .tiptap h1,
+  .docs-page-wrap .tiptap h2,
+  .docs-page-wrap .tiptap h3 {
     break-after: avoid;
   }
 }
