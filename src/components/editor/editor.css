@@ -4,53 +4,57 @@
   cursor: text;
 }
 
-/* One A4-ish page: 816px wide, 1056px tall. Canvas grows taller,
-   break markers show where content flows onto next page. */
-.docs-canvas {
+/* One A4-ish page: 816px wide, 1056px tall. Pages stack with a gray
+   gap. Content flows onto next sheet. No overlay line through text. */
+.docs-stack {
   position: relative;
+  width: 100%;
+}
+
+.docs-sheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1056px;
+  background: #fff;
+  border: 1px solid #d7dae0;
+  box-shadow:
+    0 1px 3px rgba(60, 64, 67, 0.3),
+    0 4px 12px rgba(60, 64, 67, 0.12);
+}
+
+.docs-editor-overlay {
+  position: relative;
+  z-index: 10;
+  background: transparent;
 }
 
 .docs-editor-wrap .tiptap {
+  box-sizing: border-box;
   min-height: 1056px;
-  padding: 48px var(--docs-margin-right, 56px) 72px var(--docs-margin-left, 56px);
+  padding: 48px var(--docs-margin-right, 56px) 48px var(--docs-margin-left, 56px);
   outline: none;
   font-size: 11pt;
   line-height: 1.5;
   color: #111;
   caret-color: #111;
   word-wrap: break-word;
+  background: transparent;
+  position: relative;
 }
 
-.docs-page-break {
-  position: absolute;
-  right: 0;
-  left: 0;
-  z-index: 5;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  pointer-events: none;
-  user-select: none;
-}
-
-.docs-page-break::before,
-.docs-page-break::after {
-  content: "";
-  flex: 1;
-  border-top: 2px dashed #bdc1c6;
-}
-
-.docs-page-break > span {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  color: #5f6368;
-  text-transform: uppercase;
-  background: #f8f9fa;
-  border: 1px solid #dadce0;
-  border-radius: 999px;
-  padding: 1px 10px;
-  white-space: nowrap;
+/* Page gap spacers are inline margin-top on block nodes. Print
+   restores continuous flow. */
+@media print {
+  .docs-stack {
+    height: auto !important;
+  }
+  .docs-sheet {
+    display: none !important;
+  }
+  .docs-editor-wrap .tiptap > * {
+    margin-top: 0 !important;
+  }
 }
 
 @media (max-width: 640px) {
@@ -236,14 +240,11 @@
   body * {
     visibility: hidden;
   }
-  .docs-page-break {
-    display: none !important;
-  }
-  .docs-canvas,
-  .docs-canvas * {
+  .docs-stack,
+  .docs-stack * {
     visibility: visible;
   }
-  .docs-canvas {
+  .docs-stack {
     position: absolute;
     inset: 0;
     border: none !important;
