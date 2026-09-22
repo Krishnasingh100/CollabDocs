@@ -3,8 +3,6 @@ import { Highlight } from "@tiptap/extension-highlight";
 import { Image } from "@tiptap/extension-image";
 import { Link } from "@tiptap/extension-link";
 import { Placeholder } from "@tiptap/extension-placeholder";
-import { Subscript } from "@tiptap/extension-subscript";
-import { Superscript } from "@tiptap/extension-superscript";
 import { Table } from "@tiptap/extension-table";
 import { TableCell } from "@tiptap/extension-table-cell";
 import { TableHeader } from "@tiptap/extension-table-header";
@@ -12,7 +10,7 @@ import { TableRow } from "@tiptap/extension-table-row";
 import { TaskItem } from "@tiptap/extension-task-item";
 import { TaskList } from "@tiptap/extension-task-list";
 import { TextAlign } from "@tiptap/extension-text-align";
-import { Color, FontFamily, FontSize, LineHeight, TextStyle } from "@tiptap/extension-text-style";
+import { Color, FontFamily, FontSize, TextStyle } from "@tiptap/extension-text-style";
 import { Typography } from "@tiptap/extension-typography";
 import { Underline } from "@tiptap/extension-underline";
 import StarterKit from "@tiptap/starter-kit";
@@ -28,12 +26,9 @@ export function getEditorExtensions() {
     }),
     TextStyle,
     FontSize,
-    LineHeight,
     FontFamily,
     Color,
     Underline,
-    Superscript,
-    Subscript,
     Highlight.configure({ multicolor: true }),
     TextAlign.configure({ types: ["heading", "paragraph"] }),
     Link.configure({
@@ -91,7 +86,6 @@ export const FONT_SIZES = [
   "48",
   "72",
 ];
-export const LINE_HEIGHTS = ["1.0", "1.15", "1.5", "1.75", "2.0", "2.5"];
 export const TEXT_COLORS = [
   "#000000",
   "#434343",

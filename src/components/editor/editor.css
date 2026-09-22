@@ -220,11 +220,14 @@
   outline: none;
 }
 
-/* Print: every sheet becomes a real paper page. */
+/* Print: every sheet becomes a real paper page.
+   @page margin 0 suppresses the browser print header/footer
+   (document title, date, page URL) in Chrome/Edge. The 12mm safe
+   margin moves onto the sheet itself so text never touches the edge. */
 @media print {
   @page {
     size: A4;
-    margin: 12mm;
+    margin: 0;
   }
   body * {
     visibility: hidden;
@@ -245,6 +248,7 @@
     border: none !important;
     border-radius: 0 !important;
     margin: 0 0 10mm !important;
+    padding: 12mm !important;
     overflow: visible !important;
     min-height: auto !important;
     break-after: page;

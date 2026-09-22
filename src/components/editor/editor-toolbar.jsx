@@ -21,8 +21,6 @@ import {
   Quote,
   Redo,
   Strikethrough,
-  Subscript,
-  Superscript,
   Table as TableIcon,
   Underline as UnderlineIcon,
   Undo,
@@ -39,7 +37,6 @@ import {
   FONT_FAMILIES,
   FONT_SIZES,
   HIGHLIGHT_COLORS,
-  LINE_HEIGHTS,
   TEXT_COLORS,
 } from "./extensions";
 function Tool({ tip, active, disabled, onClick, children, label }) {
@@ -167,9 +164,22 @@ export function EditorToolbar({ editor, title, getExportData }) {
                 : editor.isActive("codeBlock")
                   ? "code"
                   : "p";
-  const currentFont = editor.getAttributes("textStyle").fontFamily ?? "";
-  const currentSizeRaw = editor.getAttributes("textStyle").fontSize ?? "";
-  const currentSize = currentSizeRaw.replace("pt", "").replace("px", "");
+  // Toolbar dropdowns mirror the live selection. Browsers re-serialize
+  // font-family quotes, so options match quote-insensitively. Sizes from
+  // the +/- stepper (e.g. 13) can sit outside FONT_SIZES, so the live
+  // value becomes its own option instead of snapping back to "11".
+  const normFont = (s) => s.replace(/["']/g, "").replace(/\s+/g, " ").trim().toLowerCase();
+  const rawFont = editor.getAttributes("textStyle").fontFamily ?? "";
+  const currentFont = FONT_FAMILIES.find((f) => normFont(f.value) === normFont(rawFont))?.value ?? "";
+  const currentSize = String(editor.getAttributes("textStyle").fontSize ?? "")
+    .replace("pt", "")
+    .replace("px", "")
+    .trim();
+  const sizeOptions =
+    currentSize && !FONT_SIZES.includes(currentSize)
+      ? [{ label: currentSize, value: currentSize }, ...FONT_SIZES.map((s) => ({ label: s, value: s }))]
+      : [{ label: currentSize || "11", value: "" }, ...FONT_SIZES.map((s) => ({ label: s, value: s }))];
+  const sizeValue = FONT_SIZES.includes(currentSize) ? currentSize : sizeOptions[0].value;
   const currentAlign = editor.isActive({ textAlign: "center" })
     ? "center"
     : editor.isActive({ textAlign: "right" })
@@ -191,7 +201,8 @@ export function EditorToolbar({ editor, title, getExportData }) {
   const stepFontSize = (dir) => {
     const base = Number.parseInt(currentSize || "11", 10) || 11;
     const next = Math.min(96, Math.max(8, base + dir));
-    editor.chain().focus().setFontSize(`${next}pt`).run();
+    // updateAttributes merges: size steps keep font family + color intact
+    editor.chain().focus().updateAttributes("textStyle", { fontSize: `${next}pt` }).run();
   };
   const insertImage = () => {
     if (!imageUrl.trim()) return;
@@ -298,7 +309,7 @@ export function EditorToolbar({ editor, title, getExportData }) {
           value={currentFont}
           onChange={(v) =>
             v
-              ? editor.chain().focus().setFontFamily(v).run()
+              ? editor.chain().focus().updateAttributes("textStyle", { fontFamily: v }).run()
               : editor.chain().focus().unsetFontFamily().run()
           }
           className="hidden w-28 md:block"
@@ -318,13 +329,14 @@ export function EditorToolbar({ editor, title, getExportData }) {
           <NativeSelect
             ariaLabel="Font size"
             tip="Font size"
-            value={FONT_SIZES.includes(currentSize) ? currentSize : ""}
-            onChange={(v) => (v ? editor.chain().focus().setFontSize(`${v}pt`).run() : undefined)}
+            value={sizeValue}
+            onChange={(v) =>
+              v
+                ? editor.chain().focus().updateAttributes("textStyle", { fontSize: `${v}pt` }).run()
+                : undefined
+            }
             className="w-14 text-center"
-            options={[
-              { label: currentSize ? `${currentSize}` : "11", value: "" },
-              ...FONT_SIZES.map((s) => ({ label: s, value: s })),
-            ]}
+            options={sizeOptions}
           />
           <Tool tip="Increase font size" onClick={() => stepFontSize(1)} label="Increase font size">
             <Plus />
@@ -366,20 +378,6 @@ export function EditorToolbar({ editor, title, getExportData }) {
           onClick={() => editor.chain().focus().toggleCode().run()}
         >
           <Code />
-        </Tool>
-        <Tool
-          tip="Superscript"
-          active={editor.isActive("superscript")}
-          onClick={() => editor.chain().focus().toggleSuperscript().run()}
-        >
-          <Superscript />
-        </Tool>
-        <Tool
-          tip="Subscript"
-          active={editor.isActive("subscript")}
-          onClick={() => editor.chain().focus().toggleSubscript().run()}
-        >
-          <Subscript />
         </Tool>
         <Tool
           tip="Clear formatting"
@@ -572,17 +570,6 @@ export function EditorToolbar({ editor, title, getExportData }) {
         >
           <AlignJustify />
         </Tool>
-        <NativeSelect
-          ariaLabel="Line spacing"
-          tip="Line spacing"
-          value=""
-          onChange={(v) => v && editor.chain().focus().setLineHeight(v).run()}
-          className="hidden w-16 lg:block"
-          options={[
-            { label: "1.15", value: "" },
-            ...LINE_HEIGHTS.map((l) => ({ label: l, value: l })),
-          ]}
-        />
         <Divider />
 
         <Tool
@@ -605,18 +592,6 @@ export function EditorToolbar({ editor, title, getExportData }) {
           onClick={() => editor.chain().focus().toggleTaskList().run()}
         >
           <ListChecks />
-        </Tool>
-        <Tool
-          tip="Decrease indent (Shift+Tab)"
-          onClick={() => editor.chain().focus().liftListItem("listItem").run()}
-        >
-          <span className="text-sm">⇤</span>
-        </Tool>
-        <Tool
-          tip="Increase indent (Tab)"
-          onClick={() => editor.chain().focus().sinkListItem("listItem").run()}
-        >
-          <span className="text-sm">⇥</span>
         </Tool>
         <Divider />
 
