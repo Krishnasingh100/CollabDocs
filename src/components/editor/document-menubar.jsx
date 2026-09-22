@@ -25,7 +25,16 @@ import {
 } from "@/components/ui/menubar";
 import { createLocalDocument, deleteLocalDocument } from "@/lib/documents";
 import { downloadData, downloadDocument } from "./download";
-export function DocumentMenubar({ editor, documentId, title, onSave, onRename, getExportData }) {
+export function DocumentMenubar({
+  editor,
+  documentId,
+  title,
+  onSave,
+  onRename,
+  getExportData,
+  borderWidth,
+  onBorderChange,
+}) {
   const router = useRouter();
   const [, force] = useState(0);
   const [imageOpen, setImageOpen] = useState(false);
@@ -203,6 +212,17 @@ export function DocumentMenubar({ editor, documentId, title, onSave, onRename, g
               Underline <MenubarShortcut>Ctrl+U</MenubarShortcut>
             </MenubarItem>
             <MenubarSeparator />
+            <MenubarSub>
+              <MenubarSubTrigger>Page border</MenubarSubTrigger>
+              <MenubarSubContent>
+                {[0, 1, 2, 3, 5, 8].map((w) => (
+                  <MenubarItem key={w} onClick={() => onBorderChange?.(w)}>
+                    {w === 0 ? "None" : `${w}px`}
+                    {w === (borderWidth ?? 0) ? " ✓" : ""}
+                  </MenubarItem>
+                ))}
+              </MenubarSubContent>
+            </MenubarSub>
             <MenubarItem
               onClick={() => editor?.chain().focus().clearNodes().unsetAllMarks().run()}
               disabled={!editor}

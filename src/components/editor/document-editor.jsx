@@ -283,6 +283,7 @@ export function DocumentEditor({ documentId }) {
   const [currentPage, setCurrentPage] = useState(1);
   const [activeEditor, setActiveEditor] = useState(null);
   const [margins, setMargins] = useState({ left: DEFAULT_MARGIN, right: DEFAULT_MARGIN });
+  const [borderWidth, setBorderWidth] = useState(0);
   const [initialPages, setInitialPages] = useState([[]]);
 
   const editorsRef = useRef(new Map());
@@ -869,6 +870,35 @@ export function DocumentEditor({ documentId }) {
     }
   }, [documentId, margins]);
 
+  // Page border thickness, persisted per document locally. 0 = no border.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      try {
+        const raw = localStorage.getItem(`collabdocs:border:${documentId}`);
+        const parsed = Number.parseInt(raw ?? "0", 10);
+        if (Number.isFinite(parsed)) {
+          setBorderWidth(Math.min(Math.max(0, parsed), 12));
+        }
+      } catch {
+        // ignore corrupt storage, keep no border
+      }
+    }, 0);
+    return () => clearTimeout(t);
+  }, [documentId]);
+
+  const changeBorderWidth = useCallback(
+    (next) => {
+      const w = Math.min(Math.max(0, Number(next) || 0), 12);
+      setBorderWidth(w);
+      try {
+        localStorage.setItem(`collabdocs:border:${documentId}`, String(w));
+      } catch {
+        // storage unavailable, border stays in memory
+      }
+    },
+    [documentId],
+  );
+
   // Reflow on resize, webfont arrival, and layout shifts.
   useEffect(() => {
     scheduleReflow();
@@ -1046,6 +1076,8 @@ export function DocumentEditor({ documentId }) {
             onSave={saveNow}
             onRename={focusTitle}
             getExportData={getExportData}
+            borderWidth={borderWidth}
+            onBorderChange={changeBorderWidth}
           />
         </div>
       </header>
@@ -1064,6 +1096,13 @@ export function DocumentEditor({ documentId }) {
           style={{
             "--docs-margin-left": `${margins.left}px`,
             "--docs-margin-right": `${margins.right}px`,
+            ...(borderWidth > 0
+              ? {
+                  "--docs-border-width": `${borderWidth}px`,
+                  "--docs-border-color": "#111111",
+                  "--docs-print-border-width": `${borderWidth}px`,
+                }
+              : {}),
           }}
           className="docs-pages w-full max-w-[816px] text-black"
         >
