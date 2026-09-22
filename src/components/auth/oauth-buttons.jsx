@@ -42,7 +42,7 @@ export function OAuthButtons() {
         body: JSON.stringify({
           provider: "google",
           callbackURL: "/documents",
-          newUserCallbackURL: `${window.location.origin}/documents`,
+          newUserCallbackURL: "/documents",
         }),
         signal: ctrl.signal,
       });
