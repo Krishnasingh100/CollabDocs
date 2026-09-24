@@ -1,6 +1,7 @@
 "use server";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth/server";
+import { sendVerificationOtp } from "@/lib/auth/otp";
 function friendlyAuthError(raw) {
   // DNS failure means the app is still pointed at the placeholder auth
   // host: Neon Auth was never configured for this deployment.
@@ -18,7 +19,17 @@ export async function signInWithEmail(_prevState, formData) {
   try {
     const { error } = await auth.signIn.email({ email, password });
     if (error) {
-      return { error: friendlyAuthError(error.message || "Failed to sign in.") };
+      const raw = error.message || "Failed to sign in.";
+      // Unverified accounts finish verification first, then sign in.
+      if (/verif/i.test(raw)) {
+        try {
+          await sendVerificationOtp(email);
+        } catch {
+          // code can be resent from the verify page
+        }
+        redirect(`/verify-email?email=${encodeURIComponent(email)}`);
+      }
+      return { error: friendlyAuthError(raw) };
     }
   } catch (e) {
     return {
