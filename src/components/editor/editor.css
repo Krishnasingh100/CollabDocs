@@ -17,6 +17,8 @@
   background: #fff;
   border: var(--docs-border-width, 1px) solid var(--docs-border-color, #d7dae0);
   border-radius: 2px;
+  outline: var(--docs-border-outline, none);
+  outline-offset: var(--docs-border-inset, 0px);
   box-shadow:
     0 1px 3px rgba(60, 64, 67, 0.3),
     0 4px 12px rgba(60, 64, 67, 0.12);
@@ -246,7 +248,9 @@
   }
   .docs-sheet {
     box-shadow: none !important;
-    border: var(--docs-print-border-width, 0px) solid #111111 !important;
+    border: 0 !important;
+    outline: var(--docs-print-border-outline, none) !important;
+    outline-offset: var(--docs-print-border-inset, 0px) !important;
     border-radius: 0 !important;
     margin: 0 0 10mm !important;
     padding: 12mm !important;

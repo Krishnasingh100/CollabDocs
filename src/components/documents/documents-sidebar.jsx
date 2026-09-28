@@ -14,7 +14,8 @@ import {
   SidebarMenuItem,
   SidebarSeparator,
 } from "@/components/ui/sidebar";
-import { AccountMenu } from "@/components/auth/account-menu";
+// Slim app sidebar: brand plus Documents nav link. Account lives once in the
+// page header (top right), not duplicated in the sidebar footer.
 // Slim app sidebar: brand, a Documents nav link, and the user footer.
 // The document list and creation live in the dashboard (/documents) so
 // there is exactly one place to browse and create documents.
@@ -55,7 +56,6 @@ export function DocumentsSidebar() {
       <SidebarSeparator />
       <SidebarFooter>
         <div className="flex items-center gap-2 px-1">
-          <AccountMenu />
           <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">Workspace</span>
         </div>
       </SidebarFooter>

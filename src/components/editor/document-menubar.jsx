@@ -32,8 +32,8 @@ export function DocumentMenubar({
   onSave,
   onRename,
   getExportData,
-  borderWidth,
-  onBorderChange,
+  borderInset,
+  onBorderInsetChange,
 }) {
   const router = useRouter();
   const [, force] = useState(0);
@@ -214,11 +214,17 @@ export function DocumentMenubar({
             <MenubarSeparator />
             <MenubarSub>
               <MenubarSubTrigger>Page border</MenubarSubTrigger>
-              <MenubarSubContent>
-                {[0, 1, 2, 3, 5, 8].map((w) => (
-                  <MenubarItem key={w} onClick={() => onBorderChange?.(w)}>
-                    {w === 0 ? "None" : `${w}px`}
-                    {w === (borderWidth ?? 0) ? " ✓" : ""}
+              <MenubarSubContent className="w-52">
+                {[
+                  { label: "None", value: 0 },
+                  { label: "8px from edge", value: 8 },
+                  { label: "12px from edge", value: 12 },
+                  { label: "16px from edge", value: 16 },
+                  { label: "24px from edge", value: 24 },
+                ].map((o) => (
+                  <MenubarItem key={o.label} onClick={() => onBorderInsetChange?.(o.value)}>
+                    {o.label}
+                    {o.value === (borderInset ?? 0) ? " ✓" : ""}
                   </MenubarItem>
                 ))}
               </MenubarSubContent>

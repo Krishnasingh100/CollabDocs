@@ -20,6 +20,7 @@ import {
   Plus,
   Quote,
   Redo,
+  Square,
   Strikethrough,
   Table as TableIcon,
   Underline as UnderlineIcon,
@@ -92,7 +93,7 @@ function NativeSelect({ value, onChange, options, tip, className, ariaLabel }) {
     </Tooltip>
   );
 }
-export function EditorToolbar({ editor, title, getExportData }) {
+export function EditorToolbar({ editor, title, getExportData, borderInset, onBorderInsetChange }) {
   const [, force] = useState(0);
   const [linkUrl, setLinkUrl] = useState("");
   const [linkOpen, setLinkOpen] = useState(false);
@@ -100,6 +101,7 @@ export function EditorToolbar({ editor, title, getExportData }) {
   const [imageOpen, setImageOpen] = useState(false);
   const [tableOpen, setTableOpen] = useState(false);
   const [downloadOpen, setDownloadOpen] = useState(false);
+  const [borderOpen, setBorderOpen] = useState(false);
   const doDownload = (format) => {
     if (getExportData) {
       const data = getExportData();
@@ -725,6 +727,66 @@ export function EditorToolbar({ editor, title, getExportData }) {
               >
                 Delete table
               </Button>
+            </div>
+          </PopoverContent>
+        </Popover>
+
+        {/* Page border box */}
+        <Popover open={borderOpen} onOpenChange={setBorderOpen}>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <PopoverTrigger
+                  render={
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label="Page border"
+                      className={cn((borderInset ?? 0) > 0 && "bg-accent text-accent-foreground")}
+                    >
+                      <Square />
+                    </Button>
+                  }
+                />
+              }
+            />
+            <TooltipContent side="bottom">Page border</TooltipContent>
+          </Tooltip>
+          <PopoverContent align="start" className="w-60">
+            <p className="text-xs font-medium">Page border</p>
+            <p className="text-xs text-muted-foreground">Black box inside every page.</p>
+            <div className="mt-2 flex items-center gap-2">
+              <input
+                type="range"
+                min={0}
+                max={48}
+                step={1}
+                value={borderInset ?? 0}
+                onChange={(e) => onBorderInsetChange?.(Number(e.target.value))}
+                aria-label="Border distance from page edge"
+                className="w-full accent-primary"
+              />
+              <span className="w-12 shrink-0 text-right text-xs tabular-nums">
+                {borderInset ?? 0}px
+              </span>
+            </div>
+            <div className="mt-2 grid grid-cols-5 gap-1">
+              {[
+                { label: "None", value: 0 },
+                { label: "8", value: 8 },
+                { label: "12", value: 12 },
+                { label: "16", value: 16 },
+                { label: "24", value: 24 },
+              ].map((o) => (
+                <Button
+                  key={o.label}
+                  size="sm"
+                  variant={(borderInset ?? 0) === o.value ? "default" : "outline"}
+                  onClick={() => onBorderInsetChange?.(o.value)}
+                >
+                  {o.label}
+                </Button>
+              ))}
             </div>
           </PopoverContent>
         </Popover>

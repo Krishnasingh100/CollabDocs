@@ -13,11 +13,7 @@ import { AccountMenu } from "@/components/auth/account-menu";
 import { PageEditor } from "./page-editor";
 import "./editor.css";
 
-// True separate pages: one sheet per page, each hosting its own TipTap
-// editor. A page that outgrows its sheet pushes overflowing blocks into the
-// next sheet (creating one when needed), and sheets with room pull blocks up
-// after deletions. Text lives inside exactly one sheet, so nothing —
-// caret included — can ever render in the gray gap between pages.
+// One sheet per page; overflow pushes down, gaps pull up, text never sits between pages.
 
 const PAGE_HEIGHT = 1056;
 const MAX_REFLOW_RUNS = 50;
@@ -35,17 +31,65 @@ function topAt(view, pos) {
   }
 }
 
-// Keep the caret on screen after it rides moved content to another sheet.
+// Count line tops in [from,to] via binary search; null means unmeasurable, move whole.
+function countLinesUpTo(view, from, to, maxLines) {
+  const first = topAt(view, from);
+  const end = topAt(view, to);
+  if (first == null || end == null) return null;
+  let lines = 1;
+  let curPos = from;
+  let curTop = first;
+  if (end === first) return 1;
+  while (lines < maxLines) {
+    let lo = curPos + 1;
+    let hi = to;
+    let found = -1;
+    while (lo <= hi) {
+      const mid = (lo + hi) >> 1;
+      const mt = topAt(view, mid);
+      if (mt == null) return null;
+      if (mt === curTop) lo = mid + 1;
+      else {
+        found = mid;
+        hi = mid - 1;
+      }
+    }
+    if (found === -1) break;
+    const nt = topAt(view, found);
+    if (nt == null) return null;
+    lines += 1;
+    curPos = found;
+    curTop = nt;
+    if (curPos >= to) break;
+  }
+  return lines;
+}
+
+// Scroll focused caret into view past sticky header/footer as pages change.
 function ensureCaretVisible(ed) {
   try {
+    if (!ed || ed.isDestroyed || !ed.isFocused) return;
     const c = ed.view.coordsAtPos(ed.state.selection.from);
-    if (c.bottom > window.innerHeight - 80) {
-      window.scrollBy({ top: c.bottom - window.innerHeight + 120 });
-    } else if (c.top < 160) {
-      window.scrollBy({ top: c.top - 160 });
+    const topMargin = 170;
+    const bottomMargin = 90;
+    if (c.bottom > window.innerHeight - bottomMargin) {
+      window.scrollBy({ top: c.bottom - window.innerHeight + bottomMargin + 20 });
+    } else if (c.top < topMargin) {
+      window.scrollBy({ top: c.top - topMargin - 10 });
     }
   } catch {
-    // caret not measurable, keep scroll position
+  }
+}
+
+function ensureFocusedCaretVisible(editorsRef) {
+  try {
+    for (const ed of editorsRef.current.values()) {
+      if (ed && !ed.isDestroyed && ed.isFocused) {
+        ensureCaretVisible(ed);
+        break;
+      }
+    }
+  } catch {
   }
 }
 
@@ -70,16 +114,7 @@ function atDocEnd(ed) {
   );
 }
 
-// Decide what to do with the overflowing tail of page editor ed:
-// - { kind: "split", sp, depth }: the last block straddles the sheet end and
-//   its text can break there — keep the lines above on this sheet (the last
-//   line stays put) and move only the lines below down.
-// - { kind: "whole" }: move the whole last block down — it sits fully below
-//   the sheet end, is atomic (image/table), or is too short to break 2/2.
-// - { kind: "stay" }: a block taller than the sheet that cannot break —
-//   leave it; its sheet grows instead of hiding content. Never move it
-//   whole, or it would march down forever creating blank sheets.
-// - null: nothing to do.
+// Overflow verdict: split (break text at sp), whole (move last block down), stay (tall unbreakable grows sheet), null (nothing).
 function classifyLastNode(ed, contentH, padTop) {
   if (!ed || ed.isDestroyed) return null;
   const view = ed.view;
@@ -106,8 +141,7 @@ function classifyLastNode(ed, contentH, padTop) {
   if (!straddles && !tall) return { kind: "whole" };
   const tipRect = view.dom.getBoundingClientRect();
   const boundaryTop = tipRect.top + padTop + contentH;
-  // Locate splittable text: a direct paragraph/heading, or a paragraph or
-  // heading inside a list or quote — never tables or code.
+  // Splittable text only: direct paragraph/heading or one inside list/quote, never tables/code.
   let range = null;
   const t = last.type.name;
   if (t === "paragraph" || t === "heading") {
@@ -183,74 +217,11 @@ function classifyLastNode(ed, contentH, padTop) {
     if (nt !== loTop) break;
   }
   if (!moved || sp <= bStart || sp >= bEnd) return tall ? { kind: "stay" } : { kind: "whole" };
-  // A block taller than the sheet must break — moving it whole would march
-  // it down forever. A strictly-inside sp already leaves a line each side.
-  if (tall) return { kind: "split", sp, depth };
-  // Short block: count lines (bounded walks — wrapping bounds line length,
-  // so an exhausted walk means many lines).
-  const spTop = topAt(view, sp);
-  if (spTop == null) return { kind: "whole" };
-  let below = 1;
-  let top = spTop;
-  let q = sp;
-  guard = 0;
-  let exhausted = false;
-  while (q < bEnd) {
-    if (guard++ >= 1500) {
-      exhausted = true;
-      break;
-    }
-    q += 1;
-    const nt = topAt(view, q);
-    if (nt == null) break;
-    if (nt !== top) {
-      below += 1;
-      top = nt;
-      if (below >= 2) break;
-    }
-  }
-  if (exhausted) below = 2;
-  let above = 1;
-  const startTop = topAt(view, bStart);
-  if (startTop == null) return { kind: "whole" };
-  top = startTop;
-  q = bStart;
-  guard = 0;
-  exhausted = false;
-  while (q + 1 < sp) {
-    if (guard++ >= 2500) {
-      exhausted = true;
-      break;
-    }
-    q += 1;
-    const nt = topAt(view, q);
-    if (nt == null) break;
-    if (nt !== top) {
-      above += 1;
-      top = nt;
-      if (above >= 3) break;
-    }
-  }
-  if (exhausted) above = 3;
-  let total = 1;
-  top = startTop;
-  q = bStart;
-  guard = 0;
-  exhausted = false;
-  while (q < bEnd && total <= 2) {
-    if (guard++ >= 4000) {
-      exhausted = true;
-      break;
-    }
-    q += 1;
-    const nt = topAt(view, q);
-    if (nt == null) break;
-    if (nt !== top) {
-      total += 1;
-      top = nt;
-    }
-  }
-  if (exhausted) total = 99;
+  // Tall blocks must split or they march down forever; tiny/widow blocks move whole.
+  const below = countLinesUpTo(view, sp, bEnd, 2);
+  const above = countLinesUpTo(view, bStart, sp, 3);
+  const total = countLinesUpTo(view, bStart, bEnd, 3);
+  if (below == null || above == null || total == null) return { kind: "whole" };
   // Tiny blocks and widows move whole (Word keep-together); everything else
   // breaks so the sheet stays filled to its last line.
   if (total <= 2) return { kind: "whole" };
@@ -283,7 +254,7 @@ export function DocumentEditor({ documentId }) {
   const [currentPage, setCurrentPage] = useState(1);
   const [activeEditor, setActiveEditor] = useState(null);
   const [margins, setMargins] = useState({ left: DEFAULT_MARGIN, right: DEFAULT_MARGIN });
-  const [borderWidth, setBorderWidth] = useState(0);
+  const [borderInset, setBorderInset] = useState(0);
   const [initialPages, setInitialPages] = useState([[]]);
 
   const editorsRef = useRef(new Map());
@@ -297,6 +268,7 @@ export function DocumentEditor({ documentId }) {
   const pagesBoxRef = useRef(null);
   const reflowTimer = useRef(null);
   const reflowRuns = useRef(0);
+  const pageBurstRef = useRef(0);
   const reflowing = useRef(false);
   const reflowRef = useRef(null);
   const persistRef = useRef(null);
@@ -320,16 +292,35 @@ export function DocumentEditor({ documentId }) {
     return { contentH: PAGE_HEIGHT - 96, padTop: 48, padBottom: 48 };
   }, []);
 
-  const pageUsed = useCallback((i, padTop, padBottom) => {
+  const pageUsed = useCallback((i, padTop) => {
     const sheet = sheetsRef.current.get(i);
     const el = sheet?.querySelector(".tiptap");
     if (!el) return 0;
-    return Math.max(0, el.scrollHeight - padTop - padBottom);
+    // .tiptap has min-height:1056px so scrollHeight never drops below a full
+    // page — measure the last child's bottom instead so short pages report
+    // small usage and pull-up (gap filling) actually runs.
+    try {
+      const kids = el.children;
+      if (!kids || kids.length === 0) return 0;
+      const last = kids[kids.length - 1];
+      const elRect = el.getBoundingClientRect();
+      const lastRect = last.getBoundingClientRect();
+      const cs = getComputedStyle(last);
+      const mb = Number.parseFloat(cs.marginBottom) || 0;
+      return Math.max(0, lastRect.bottom - elRect.top - padTop + mb);
+    } catch {
+      return 0;
+    }
   }, []);
 
   const nodeHeight = useCallback((ed, pos) => {
     try {
-      return ed.view.nodeDOM(pos)?.offsetHeight ?? 0;
+      const dom = ed.view.nodeDOM(pos);
+      if (!dom) return 0;
+      const cs = getComputedStyle(dom);
+      const mt = Number.parseFloat(cs.marginTop) || 0;
+      const mb = Number.parseFloat(cs.marginBottom) || 0;
+      return (dom.offsetHeight ?? 0) + mt + mb;
     } catch {
       return 0;
     }
@@ -364,6 +355,7 @@ export function DocumentEditor({ documentId }) {
       }
     }
     ensureCaretVisible(ed);
+    requestAnimationFrame(() => ensureCaretVisible(ed));
     return true;
   }, []);
 
@@ -419,7 +411,6 @@ export function DocumentEditor({ documentId }) {
         setActiveEditor(n);
         try {
           n.chain().focus(caret.from).setTextSelection({ from: caret.from, to: caret.to }).run();
-          ensureCaretVisible(n);
         } catch {
           try {
             n.commands.focus("start");
@@ -481,7 +472,6 @@ export function DocumentEditor({ documentId }) {
         setActiveEditor(p);
         try {
           p.chain().focus(caret.from).setTextSelection({ from: caret.from, to: caret.to }).run();
-          ensureCaretVisible(p);
         } catch {
           try {
             p.commands.focus("end");
@@ -512,9 +502,10 @@ export function DocumentEditor({ documentId }) {
     }
     reflowing.current = true;
     let moves = 0;
+    let addedPages = false;
     let skippedComposing = false;
     try {
-      const { contentH, padTop, padBottom } = measureContent();
+      const { contentH, padTop } = measureContent();
       for (let i = 0; i < count - 1; i++) {
         let guard = 0;
         while (guard++ < 6) {
@@ -527,7 +518,7 @@ export function DocumentEditor({ documentId }) {
             break;
           }
           if (docIsEmpty(nxt.state.doc)) break;
-          const used = pageUsed(i, padTop, padBottom);
+          const used = pageUsed(i, padTop);
           const h = nodeHeight(nxt, 0);
           if (used + h > contentH + 1) break;
           if (!moveFirstNodeUp(i + 1)) break;
@@ -542,12 +533,17 @@ export function DocumentEditor({ documentId }) {
           continue;
         }
         let guard = 0;
-        while (guard++ < 40 && pageUsed(i, padTop, padBottom) > contentH + 1) {
+        while (guard++ < 40 && pageUsed(i, padTop) > contentH + 1) {
           const doc = ed.state.doc;
           if (doc.childCount === 0) break;
           if (i + 1 >= pageCountRef.current) {
-            const over = pageUsed(i, padTop, padBottom) - contentH;
-            const add = Math.max(1, Math.min(10, Math.ceil(over / contentH)));
+            const over = pageUsed(i, padTop) - contentH;
+            // Giant pastes overflow many pages at once; grow the batch while
+            // consecutive runs keep adding pages so settling takes few runs.
+            const burst = Math.min(pageBurstRef.current, 6);
+            const add = Math.max(1, Math.min(40, Math.ceil(over / contentH) + burst * 5));
+            pageBurstRef.current = Math.min(burst + 1, 6);
+            addedPages = true;
             setPages(pageCountRef.current + add);
             scheduleReflow();
             return;
@@ -590,6 +586,7 @@ export function DocumentEditor({ documentId }) {
       reflowing.current = false;
     }
     if (skippedComposing) scheduleReflow();
+    if (!addedPages) pageBurstRef.current = 0;
     if (moves > 0) {
       reflowRuns.current += 1;
       if (reflowRuns.current > MAX_REFLOW_RUNS) {
@@ -599,6 +596,9 @@ export function DocumentEditor({ documentId }) {
       scheduleReflow();
     } else {
       reflowRuns.current = 0;
+      // Settled: one scroll to the focused caret, none mid-settle, so pasting
+      // across many pages no longer flutters the page number and scroll.
+      requestAnimationFrame(() => ensureFocusedCaretVisible(editorsRef));
     }
   }, [
     measureContent,
@@ -654,11 +654,15 @@ export function DocumentEditor({ documentId }) {
     for (let i = 0; i < pageCountRef.current; i++) {
       const ed = editorsRef.current.get(i);
       if (!ed || ed.isDestroyed) continue;
+      // Skip trailing/empty sheets so saves don't accumulate phantom blank
+      // paragraphs (each empty page is a single empty paragraph).
+      if (docIsEmpty(ed.state.doc)) continue;
       const json = ed.getJSON();
       if (json.content) content.push(...json.content);
       const t = ed.getText();
       if (t) texts.push(t);
     }
+    if (content.length === 0) content.push({ type: "paragraph" });
     return { content, text: texts.join("\n") };
   }, []);
 
@@ -667,7 +671,7 @@ export function DocumentEditor({ documentId }) {
     let html = "";
     for (let i = 0; i < pageCountRef.current; i++) {
       const ed = editorsRef.current.get(i);
-      if (ed && !ed.isDestroyed) {
+      if (ed && !ed.isDestroyed && !docIsEmpty(ed.state.doc)) {
         try {
           html += ed.getHTML();
         } catch {
@@ -735,8 +739,13 @@ export function DocumentEditor({ documentId }) {
       // own overflow (Word-like) instead of piling lines up past the sheet
       // end and yanking them all at once. Reflow's own moves stay async.
       // The reflow skips composing pages itself and retries afterwards.
+      // After DOM settles, scroll the focused caret into view so Enter past
+      // the page end pulls the whole page down with the pointer.
       if (meta) scheduleReflow();
-      else reflowRef.current?.();
+      else {
+        reflowRef.current?.();
+        requestAnimationFrame(() => ensureFocusedCaretVisible(editorsRef));
+      }
     },
     [scheduleReflow],
   );
@@ -789,6 +798,17 @@ export function DocumentEditor({ documentId }) {
     if (saveTimer.current) clearTimeout(saveTimer.current);
     if (titleTimer.current) clearTimeout(titleTimer.current);
     (async () => {
+      // Reset first so switching documents never flashes the previous doc's
+      // pages/editors (remount keys below also drop their undo history).
+      // Runs before the first await, i.e. in the same tick as the effect.
+      setLoaded(false);
+      loadedRef.current = false;
+      activeIndexRef.current = 0;
+      setCurrentPage(1);
+      setPages(1);
+      setInitialPages([[]]);
+      setActiveEditor(null);
+      setTitle("Untitled document");
       let content = null;
       let docTitle = "Untitled document";
       try {
@@ -870,30 +890,40 @@ export function DocumentEditor({ documentId }) {
     }
   }, [documentId, margins]);
 
-  // Page border thickness, persisted per document locally. 0 = no border.
+  // Page border box (Word-style black line inside each page), set once and shared by all pages.
   useEffect(() => {
     const t = setTimeout(() => {
       try {
         const raw = localStorage.getItem(`collabdocs:border:${documentId}`);
-        const parsed = Number.parseInt(raw ?? "0", 10);
-        if (Number.isFinite(parsed)) {
-          setBorderWidth(Math.min(Math.max(0, parsed), 12));
+        if (raw) {
+          let inset = null;
+          try {
+            const parsed = JSON.parse(raw);
+            if (parsed && typeof parsed === "object") {
+              if (Number.isFinite(Number(parsed.inset))) inset = Number(parsed.inset);
+              else if (Number.isFinite(Number(parsed.w)) && Number(parsed.w) > 0) inset = 12;
+            } else if (Number.isFinite(Number(parsed))) {
+              inset = Number(parsed) > 0 ? 12 : 0;
+            }
+          } catch {
+            const legacy = Number.parseInt(raw ?? "0", 10);
+            if (Number.isFinite(legacy)) inset = legacy > 0 ? 12 : 0;
+          }
+          if (inset != null) setBorderInset(Math.min(Math.max(0, Math.round(inset)), 48));
         }
       } catch {
-        // ignore corrupt storage, keep no border
       }
     }, 0);
     return () => clearTimeout(t);
   }, [documentId]);
 
-  const changeBorderWidth = useCallback(
+  const changeBorderInset = useCallback(
     (next) => {
-      const w = Math.min(Math.max(0, Number(next) || 0), 12);
-      setBorderWidth(w);
+      const v = Math.min(Math.max(0, Math.round(Number(next) || 0)), 48);
+      setBorderInset(v);
       try {
-        localStorage.setItem(`collabdocs:border:${documentId}`, String(w));
+        localStorage.setItem(`collabdocs:border:${documentId}`, JSON.stringify({ inset: v }));
       } catch {
-        // storage unavailable, border stays in memory
       }
     },
     [documentId],
@@ -1076,13 +1106,19 @@ export function DocumentEditor({ documentId }) {
             onSave={saveNow}
             onRename={focusTitle}
             getExportData={getExportData}
-            borderWidth={borderWidth}
-            onBorderChange={changeBorderWidth}
+            borderInset={borderInset}
+            onBorderInsetChange={changeBorderInset}
           />
         </div>
       </header>
 
-      <EditorToolbar editor={activeEditor} title={title} getExportData={getExportData} />
+      <EditorToolbar
+        editor={activeEditor}
+        title={title}
+        getExportData={getExportData}
+        borderInset={borderInset}
+        onBorderInsetChange={changeBorderInset}
+      />
 
       {/* Real separate sheets: page 1 fills to its limit, then overflow
           flows into a newly created page 2 below it — like Word. */}
@@ -1096,13 +1132,10 @@ export function DocumentEditor({ documentId }) {
           style={{
             "--docs-margin-left": `${margins.left}px`,
             "--docs-margin-right": `${margins.right}px`,
-            ...(borderWidth > 0
-              ? {
-                  "--docs-border-width": `${borderWidth}px`,
-                  "--docs-border-color": "#111111",
-                  "--docs-print-border-width": `${borderWidth}px`,
-                }
-              : {}),
+            "--docs-border-outline": borderInset > 0 ? "2px solid #111111" : "none",
+            "--docs-border-inset": `${borderInset > 0 ? -borderInset : 0}px`,
+            "--docs-print-border-outline": borderInset > 0 ? "2px solid #111111" : "none",
+            "--docs-print-border-inset": `${borderInset > 0 ? -borderInset : 0}px`,
           }}
           className="docs-pages w-full max-w-[816px] text-black"
         >
@@ -1113,7 +1146,7 @@ export function DocumentEditor({ documentId }) {
           ) : (
             Array.from({ length: pageCount }, (_, i) => (
               <PageEditor
-                key={i}
+                key={`${documentId}-${i}`}
                 pageIndex={i}
                 initialContent={initialPages[i] ?? []}
                 apiRef={apiRef}

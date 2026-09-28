@@ -1,11 +1,12 @@
 "use client";
-import { useDeferredValue, useEffect, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import {
   BarChart3,
   Briefcase,
   Check,
   ClipboardList,
   FileText,
+  FileUp,
   Loader2,
   Mail,
   MoreHorizontal,
@@ -44,7 +45,9 @@ import {
 import { TEMPLATES } from "@/components/documents/templates";
 import { TemplateThumbnail } from "@/components/documents/template-thumbnail";
 import { AccountMenu } from "@/components/auth/account-menu";
+import { FILE_ACCEPT, SUPPORTED_LABEL, parseFileToDocument } from "@/lib/file-open";
 function formatDate(value) {
+  if (!value) return "—";
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return "—";
   return d.toLocaleString();
@@ -62,6 +65,9 @@ export default function DocumentsPage() {
   const [docs, setDocs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
+  const [opening, setOpening] = useState(false);
+  const [openError, setOpenError] = useState(null);
+  const fileRef = useRef(null);
   const [query, setQuery] = useState("");
   const [copiedId, setCopiedId] = useState(null);
   // Typing stays instant, table filters on the deferred value so each
@@ -121,6 +127,39 @@ export default function DocumentsPage() {
       router.push(`/documents/${local.id}`);
     } finally {
       setCreating(false);
+    }
+  };
+  const openPickedFile = async (file) => {
+    if (!file || opening) return;
+    setOpening(true);
+    setOpenError(null);
+    try {
+      const parsed = await parseFileToDocument(file);
+      try {
+        const res = await fetch("/api/documents", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: parsed.title,
+            content: parsed.content,
+            plainText: parsed.plainText,
+          }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          router.push(`/documents/${data.document.id}`);
+          return;
+        }
+        throw new Error("api failed");
+      } catch {
+        const local = createLocalDocument(parsed.title);
+        saveLocalDocument({ ...local, content: parsed.content, plainText: parsed.plainText });
+        router.push(`/documents/${local.id}`);
+      }
+    } catch (e) {
+      setOpenError(e instanceof Error ? e.message : "Could not open file.");
+    } finally {
+      setOpening(false);
     }
   };
   const removeDoc = async (id) => {
@@ -183,7 +222,35 @@ export default function DocumentsPage() {
       </div>
 
       <section aria-label="Template gallery" className="flex flex-col gap-3">
-        <h2 className="text-sm font-medium text-muted-foreground">Start a new document</h2>
+        <div className="flex flex-wrap items-center gap-2">
+          <h2 className="text-sm font-medium text-muted-foreground">Start a new document</h2>
+          <button
+            onClick={() => fileRef.current?.click()}
+            disabled={creating || opening}
+            title={`Open ${SUPPORTED_LABEL}, even Google Docs exports`}
+            className="ml-auto flex items-center gap-1.5 rounded-md border border-border bg-card px-2.5 py-1.5 text-sm font-medium outline-none transition hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
+          >
+            <FileUp className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+            {opening ? "Opening…" : "Open file"}
+          </button>
+        </div>
+        {openError && (
+          <p role="alert" className="text-sm text-destructive">
+            {openError}
+          </p>
+        )}
+        <input
+          ref={fileRef}
+          type="file"
+          accept={FILE_ACCEPT}
+          className="hidden"
+          aria-hidden="true"
+          tabIndex={-1}
+          onChange={(e) => {
+            openPickedFile(e.target.files?.[0]);
+            e.target.value = "";
+          }}
+        />
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
           {TEMPLATES.map((t, i) => {
             const Icon = TEMPLATE_ICONS[t.id] ?? FileText;
@@ -214,7 +281,7 @@ export default function DocumentsPage() {
           </div>
         ) : filtered.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            {query ? "No matches." : "No documents yet — pick a template above."}
+            {query ? "No matches." : "No documents yet — pick a template or open a file above."}
           </p>
         ) : (
           <div className="overflow-hidden rounded-lg border bg-card">

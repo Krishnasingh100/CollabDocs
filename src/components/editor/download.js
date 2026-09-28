@@ -1,5 +1,5 @@
 export function slugifyTitle(title) {
-  const slug = title
+  const slug = String(title ?? "")
     .trim()
     .toLowerCase()
     .replace(/[^a-z0-9-_ ]+/gi, "")
@@ -27,7 +27,8 @@ export function downloadDocument(editor, title, format) {
 // (the paged editor concatenates all sheets before downloading).
 export function downloadData(data, title, format) {
   if (!data || typeof window === "undefined" || typeof document === "undefined") return;
-  const name = slugifyTitle(title);
+  const safeTitle = String(title ?? "").trim() || "Untitled document";
+  const name = slugifyTitle(safeTitle);
   // No lightweight client PDF writer here; reuse the print stylesheet
   // (page only, no chrome) so the user picks "Save as PDF".
   if (format === "pdf") {
@@ -51,7 +52,7 @@ export function downloadData(data, title, format) {
       ext = "json";
       break;
     case "html":
-      content = `<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n<title>${escapeHtml(title.trim() || "Untitled document")}</title>\n</head>\n<body>\n${data.html}\n</body>\n</html>\n`;
+      content = `<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n<title>${escapeHtml(safeTitle)}</title>\n</head>\n<body>\n${data.html}\n</body>\n</html>\n`;
       mime = "text/html";
       ext = "html";
       break;
@@ -60,6 +61,8 @@ export function downloadData(data, title, format) {
       mime = "text/plain";
       ext = "txt";
       break;
+    default:
+      return;
   }
   const blob = new Blob([content], { type: `${mime};charset=utf-8` });
   const url = URL.createObjectURL(blob);

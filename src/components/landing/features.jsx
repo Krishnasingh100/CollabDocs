@@ -1,11 +1,17 @@
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { LayoutTemplate, PenLine, ShieldCheck } from "lucide-react";
+import { FileUp, LayoutTemplate, PenLine, ShieldCheck } from "lucide-react";
 const items = [
   {
     icon: PenLine,
     chip: "bg-emerald-600/10 text-emerald-800 dark:text-emerald-200",
     title: "Rich text editor",
     detail: "Headings, tables, images, lists, and formatting with Tiptap. Fast and familiar.",
+  },
+  {
+    icon: FileUp,
+    chip: "bg-sky-600/10 text-sky-800 dark:text-sky-200",
+    title: "Open any file",
+    detail: "PDF, Word, HTML, JSON, Markdown, and text — even Google Docs exports — open right into the editor.",
   },
   {
     icon: LayoutTemplate,
@@ -32,7 +38,7 @@ export function Features() {
         <h2 id="features-heading" className="mt-2 text-3xl font-semibold tracking-tight">
           Everything needed to write
         </h2>
-        <div className="mt-8 grid gap-4 md:grid-cols-3">
+        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {items.map((item) => (
             <Card key={item.title} className="transition-colors hover:border-primary/30">
               <CardHeader>
