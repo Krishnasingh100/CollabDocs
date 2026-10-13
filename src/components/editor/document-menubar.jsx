@@ -42,13 +42,20 @@ export function DocumentMenubar({
   const [imageUrl, setImageUrl] = useState("");
   const fileRef = useRef(null);
   // Rerender on editor state changes so Undo/Redo disabled states stay fresh.
+  // Collapses rapid transactions (pagination settling fires many per frame)
+  // into one repaint so menus stay responsive while pages distribute.
   useEffect(() => {
     if (!editor) return;
-    const rerender = () => force((x) => x + 1);
+    let raf = 0;
+    const rerender = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => force((x) => x + 1));
+    };
     editor.on("selectionUpdate", rerender);
     editor.on("transaction", rerender);
     editor.on("update", rerender);
     return () => {
+      cancelAnimationFrame(raf);
       editor.off("selectionUpdate", rerender);
       editor.off("transaction", rerender);
       editor.off("update", rerender);

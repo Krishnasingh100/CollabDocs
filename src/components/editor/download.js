@@ -1,3 +1,4 @@
+import { absolutizeExportUrls, buildExportCSS, getDocxOptions } from "./document-styles";
 // Takes a title; builds a safe filename slug; returns slug text.
 export function slugifyTitle(title) {
   const slug = String(title ?? "")
@@ -15,6 +16,12 @@ function escapeHtml(text) {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+// Takes export HTML plus title; wraps it in a styled standalone page.
+// Returns HTML using the same type scale and spacing as the editor.
+function buildStandaloneHtml(html, safeTitle, origin) {
+  const body = absolutizeExportUrls(html || "<p></p>", origin);
+  return `<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n<title>${escapeHtml(safeTitle)}</title>\n<style>\n${buildExportCSS()}\n</style>\n</head>\n<body class="docs-export">\n${body}\n</body>\n</html>\n`;
 }
 // Takes one editor plus title and format; exports single-editor content; downloads a file.
 export function downloadDocument(editor, title, format) {
@@ -47,11 +54,14 @@ export function downloadData(data, title, format) {
     void (async () => {
       try {
         const { default: HtmlToDocx } = await import("@turbodocx/html-to-docx");
-        const blob = await HtmlToDocx(
-          `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>${data.html}</body></html>`,
-          null,
-          { title: safeTitle },
-        );
+        const origin = window.location.origin;
+        const styled =
+          `<!DOCTYPE html><html><head><meta charset="utf-8"><style>\n${buildExportCSS()}\n</style></head>` +
+          `<body class="docs-export">${absolutizeExportUrls(data.html || "<p></p>", origin)}</body></html>`;
+        const blob = await HtmlToDocx(styled, null, {
+          ...getDocxOptions(data.margins),
+          title: safeTitle,
+        });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
@@ -76,7 +86,7 @@ export function downloadData(data, title, format) {
       ext = "json";
       break;
     case "html":
-      content = `<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n<title>${escapeHtml(safeTitle)}</title>\n</head>\n<body>\n${data.html}\n</body>\n</html>\n`;
+      content = buildStandaloneHtml(data.html, safeTitle, window.location.origin);
       mime = "text/html";
       ext = "html";
       break;

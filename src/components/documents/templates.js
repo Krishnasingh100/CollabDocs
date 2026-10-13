@@ -71,9 +71,7 @@ export const TEMPLATES = [
     name: "Blank document",
     title: "Untitled document",
     tagline: "A clean page",
-    accent: "#64748b",
     banner: "/templates/blank-document.svg",
-    preview: "blank",
     content: null,
     plainText: "",
   },
@@ -82,9 +80,7 @@ export const TEMPLATES = [
     name: "Report",
     title: "Untitled report",
     tagline: "Summary, metrics, next steps",
-    accent: "#2563eb",
     banner: "/templates/business-letter.svg",
-    preview: "report",
     content: doc(
       image("/templates/business-letter.svg", "Report cover illustration"),
       heading(1, "Quarterly report"),
@@ -119,9 +115,7 @@ export const TEMPLATES = [
     name: "Meeting notes",
     title: "Untitled meeting notes",
     tagline: "Agenda, decisions, actions",
-    accent: "#059669",
     banner: "/templates/project-proposal.svg",
-    preview: "notes",
     content: doc(
       heading(1, "Meeting notes"),
       paragraph("Date: Monday, 9:30 AM · Attendees: add names here"),
@@ -144,9 +138,7 @@ export const TEMPLATES = [
     name: "Resume",
     title: "Untitled resume",
     tagline: "Experience and skills",
-    accent: "#7c3aed",
     banner: "/templates/resume.svg",
-    preview: "resume",
     content: doc(
       heading(1, "Your name", { textAlign: "center" }),
       paragraph("you@example.com · (555) 123-4567 · City, Country", {
@@ -171,9 +163,7 @@ export const TEMPLATES = [
     name: "Letter",
     title: "Untitled letter",
     tagline: "Formal and ready to send",
-    accent: "#d97706",
     banner: "/templates/cover-letter.svg",
-    preview: "letter",
     content: doc(
       paragraph("123 Maple Street, Springfield", { textAlign: "right" }),
       paragraph("September 17, 2026", { textAlign: "right" }),
@@ -195,9 +185,7 @@ export const TEMPLATES = [
     name: "Project proposal",
     title: "Untitled proposal",
     tagline: "Goals, timeline, budget",
-    accent: "#0d9488",
     banner: "/templates/software-proposal.svg",
-    preview: "proposal",
     content: doc(
       image("/templates/software-proposal.svg", "Proposal cover illustration"),
       heading(1, "Project proposal"),

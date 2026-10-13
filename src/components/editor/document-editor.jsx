@@ -11,6 +11,7 @@ import { DEFAULT_MARGIN, MarginRuler } from "./margin-ruler";
 import { DocumentMenubar } from "./document-menubar";
 import { AccountMenu } from "@/components/auth/account-menu";
 import { PageEditor } from "./page-editor";
+import { buildSettleSignature, isSettleCycle, serializeDocJsonToHtml } from "./document-styles";
 import "./editor.css";
 
 // One sheet per page; overflow pushes down, gaps pull up, text never sits between pages.
@@ -272,6 +273,7 @@ export function DocumentEditor({ documentId }) {
   const pagesBoxRef = useRef(null);
   const reflowTimer = useRef(null);
   const reflowRuns = useRef(0);
+  const settleSigRef = useRef([]);
   const pageBurstRef = useRef(0);
   const reflowing = useRef(false);
   const reflowRef = useRef(null);
@@ -590,13 +592,32 @@ export function DocumentEditor({ documentId }) {
     if (skippedComposing) scheduleReflow();
     if (!addedPages) pageBurstRef.current = 0;
     if (moves > 0) {
+      // Cycle guard: every move changes per-page block counts, so a repeated
+      // distribution means runs only bounce the same blocks (pull up, push
+      // back down) without converging. Stops the chain here instead of
+      // flickering through dozens of runs; the next user edit restarts it.
+      const childCounts = [];
+      for (let i = 0; i < pageCountRef.current; i++) {
+        const ed = editorsRef.current.get(i);
+        childCounts.push(ed && !ed.isDestroyed ? ed.state.doc.childCount : -1);
+      }
+      const sig = buildSettleSignature(pageCountRef.current, childCounts);
+      if (isSettleCycle(settleSigRef.current, sig)) {
+        settleSigRef.current = [];
+        reflowRuns.current = 0;
+        requestAnimationFrame(() => ensureFocusedCaretVisible(editorsRef));
+        return;
+      }
+      settleSigRef.current = [...settleSigRef.current.slice(-5), sig];
       reflowRuns.current += 1;
       if (reflowRuns.current > MAX_REFLOW_RUNS) {
         reflowRuns.current = 0;
+        settleSigRef.current = [];
         return;
       }
       scheduleReflow();
     } else {
+      settleSigRef.current = [];
       reflowRuns.current = 0;
       // Settled: one scroll to the focused caret, none mid-settle, so pasting
       // across many pages no longer flutters the page number and scroll.
@@ -672,22 +693,40 @@ export function DocumentEditor({ documentId }) {
     return { content, text: texts.join("\n") };
   }, []);
 
-  // Takes all pages; concatenates HTML plus JSON; returns export data.
+  // Takes all pages; serializes the combined logical document; returns export data.
+  // Renders HTML from the merged JSON through the editor schema so page-break
+  // splits never leak into exports as doubled paragraphs or extra gaps.
   const getExportData = useCallback(() => {
     const { content, text } = buildFullDoc();
+    const json = { type: "doc", content };
     let html = "";
-    for (let i = 0; i < pageCountRef.current; i++) {
-      const ed = editorsRef.current.get(i);
-      if (ed && !ed.isDestroyed && !docIsEmpty(ed.state.doc)) {
-        try {
-          html += ed.getHTML();
-        } catch {
-          // skip a page that cannot render right now
+    try {
+      let schema = null;
+      for (let i = 0; i < pageCountRef.current; i++) {
+        const ed = editorsRef.current.get(i);
+        if (ed && !ed.isDestroyed) {
+          schema = ed.schema;
+          break;
+        }
+      }
+      if (schema) html = serializeDocJsonToHtml(json, schema);
+    } catch {
+      html = "";
+    }
+    if (!html) {
+      for (let i = 0; i < pageCountRef.current; i++) {
+        const ed = editorsRef.current.get(i);
+        if (ed && !ed.isDestroyed && !docIsEmpty(ed.state.doc)) {
+          try {
+            html += ed.getHTML();
+          } catch {
+            // skip a page that cannot render right now
+          }
         }
       }
     }
-    return { json: { type: "doc", content }, html, text };
-  }, [buildFullDoc]);
+    return { json, html, text, margins };
+  }, [buildFullDoc, margins]);
 
   // Takes current content plus title; saves locally then API; updates save state.
   const persist = useCallback(async () => {
@@ -744,6 +783,7 @@ export function DocumentEditor({ documentId }) {
         if (saveTimer.current) clearTimeout(saveTimer.current);
         saveTimer.current = setTimeout(() => persistRef.current?.(), 900);
         reflowRuns.current = 0;
+        settleSigRef.current = [];
       }
       // User edits reflow at once for exact overflow; reflow moves stay async.
       // Skips composing pages, then scrolls focused caret into view.
@@ -803,6 +843,9 @@ export function DocumentEditor({ documentId }) {
       setLoaded(false);
       loadedRef.current = false;
       activeIndexRef.current = 0;
+      reflowRuns.current = 0;
+      settleSigRef.current = [];
+      pageBurstRef.current = 0;
       setCurrentPage(1);
       setPages(1);
       setInitialPages([[]]);
@@ -927,7 +970,9 @@ export function DocumentEditor({ documentId }) {
     [documentId],
   );
 
-  // Reflow on resize, webfont arrival, and layout shifts.
+  // Reflow on resize, webfont arrival, image decode, and layout shifts.
+  // Images (template artwork, uploads) change block heights after decode
+  // without firing editor transactions, so their load events reflow too.
   useEffect(() => {
     scheduleReflow();
     const onResize = () => scheduleReflow();
@@ -936,6 +981,11 @@ export function DocumentEditor({ documentId }) {
     const t = setTimeout(scheduleReflow, 300);
     let ro = null;
     const box = pagesBoxRef.current;
+    const onBoxLoad = (e) => {
+      if (e?.target?.tagName === "IMG") scheduleReflow();
+    };
+    // Image load events do not bubble; capture catches them at the container.
+    box?.addEventListener("load", onBoxLoad, true);
     if (box && typeof ResizeObserver !== "undefined") {
       ro = new ResizeObserver(() => scheduleReflow());
       ro.observe(box);
@@ -946,6 +996,7 @@ export function DocumentEditor({ documentId }) {
     return () => {
       window.removeEventListener("resize", onResize);
       window.removeEventListener("load", onResize);
+      box?.removeEventListener("load", onBoxLoad, true);
       ro?.disconnect();
       clearTimeout(t);
     };

@@ -225,11 +225,12 @@
 
 /* Print: every sheet becomes a real paper page.
    @page margin 0 suppresses the browser print header/footer
-   (document title, date, page URL) in Chrome/Edge. The 12mm safe
-   margin moves onto the sheet itself so text never touches the edge. */
+   (document title, date, page URL) in Chrome/Edge. The sheet keeps the
+   same box as the screen page (Letter size, 48px vertical rhythm, ruler
+   side margins) so PDF output positions match the editor. */
 @media print {
   @page {
-    size: A4;
+    size: Letter;
     margin: 0;
   }
   body * {
@@ -253,7 +254,7 @@
     outline-offset: var(--docs-print-border-inset, 0px) !important;
     border-radius: 0 !important;
     margin: 0 0 10mm !important;
-    padding: 12mm !important;
+    padding: 48px var(--docs-margin-right, 56px) 48px var(--docs-margin-left, 56px) !important;
     overflow: visible !important;
     min-height: auto !important;
     break-after: page;
