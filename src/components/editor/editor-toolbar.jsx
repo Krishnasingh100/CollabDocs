@@ -40,6 +40,7 @@ import {
   HIGHLIGHT_COLORS,
   TEXT_COLORS,
 } from "./extensions";
+// Takes tip plus button props; shows uniform toolbar button with tooltip; renders button.
 function Tool({ tip, active, disabled, onClick, children, label }) {
   return (
     <Tooltip>
@@ -67,6 +68,7 @@ function Tool({ tip, active, disabled, onClick, children, label }) {
 function Divider() {
   return <Separator orientation="vertical" className="mx-1 h-6 w-px shrink-0" />;
 }
+// Takes value plus options; mirrors live selection in dropdown; renders select.
 function NativeSelect({ value, onChange, options, tip, className, ariaLabel }) {
   return (
     <Tooltip>
@@ -93,6 +95,7 @@ function NativeSelect({ value, onChange, options, tip, className, ariaLabel }) {
     </Tooltip>
   );
 }
+// Takes active editor plus export helpers; edits formatting for selection; renders toolbar.
 export function EditorToolbar({ editor, title, getExportData, borderInset, onBorderInsetChange }) {
   const [, force] = useState(0);
   const [linkUrl, setLinkUrl] = useState("");
@@ -102,6 +105,7 @@ export function EditorToolbar({ editor, title, getExportData, borderInset, onBor
   const [tableOpen, setTableOpen] = useState(false);
   const [downloadOpen, setDownloadOpen] = useState(false);
   const [borderOpen, setBorderOpen] = useState(false);
+  // Takes format plus export data; saves whole document; downloads a file.
   const doDownload = (format) => {
     if (getExportData) {
       const data = getExportData();
@@ -116,9 +120,7 @@ export function EditorToolbar({ editor, title, getExportData, borderInset, onBor
   };
   useEffect(() => {
     if (!editor) return;
-    // Selection + transaction + update can fire several times per
-    // keystroke. Collapse them into one repaint per frame so the
-    // 600-line toolbar does not re-render 3x per keypress.
+    // Editor events fire often per keystroke; collapses them to one repaint; keeps toolbar fast.
     let raf = 0;
     const rerender = () => {
       cancelAnimationFrame(raf);
@@ -134,6 +136,7 @@ export function EditorToolbar({ editor, title, getExportData, borderInset, onBor
       editor.off("update", rerender);
     };
   }, [editor]);
+  // No input; loads current link into dialog; opens link popover.
   const openLink = useCallback(() => {
     if (!editor) return;
     const prev = editor.getAttributes("link").href ?? "";
@@ -166,10 +169,7 @@ export function EditorToolbar({ editor, title, getExportData, borderInset, onBor
                 : editor.isActive("codeBlock")
                   ? "code"
                   : "p";
-  // Toolbar dropdowns mirror the live selection. Browsers re-serialize
-  // font-family quotes, so options match quote-insensitively. Sizes from
-  // the +/- stepper (e.g. 13) can sit outside FONT_SIZES, so the live
-  // value becomes its own option instead of snapping back to "11".
+  // Dropdowns mirror live selection; fonts match quote-insensitively and custom sizes stay selectable.
   const normFont = (s) => s.replace(/["']/g, "").replace(/\s+/g, " ").trim().toLowerCase();
   const rawFont = editor.getAttributes("textStyle").fontFamily ?? "";
   const currentFont = FONT_FAMILIES.find((f) => normFont(f.value) === normFont(rawFont))?.value ?? "";
@@ -189,6 +189,7 @@ export function EditorToolbar({ editor, title, getExportData, borderInset, onBor
       : editor.isActive({ textAlign: "justify" })
         ? "justify"
         : "left";
+  // Takes style value; applies block style at selection; updates text.
   const applyStyle = (v) => {
     if (v === "p") editor.chain().focus().setParagraph().run();
     else if (v === "quote") editor.chain().focus().toggleBlockquote().run();
@@ -200,18 +201,21 @@ export function EditorToolbar({ editor, title, getExportData, borderInset, onBor
         .setHeading({ level: Number(v.slice(1)) })
         .run();
   };
+  // Takes direction; steps font size within limits; updates selection.
   const stepFontSize = (dir) => {
     const base = Number.parseInt(currentSize || "11", 10) || 11;
     const next = Math.min(96, Math.max(8, base + dir));
     // updateAttributes merges: size steps keep font family + color intact
     editor.chain().focus().updateAttributes("textStyle", { fontSize: `${next}pt` }).run();
   };
+  // Takes image URL input; inserts image at selection; closes popover.
   const insertImage = () => {
     if (!imageUrl.trim()) return;
     editor.chain().focus().setImage({ src: imageUrl.trim() }).run();
     setImageUrl("");
     setImageOpen(false);
   };
+  // Takes image file; reads it as data URL for insertion; closes popover.
   const uploadImage = (file) => {
     if (!file) return;
     const reader = new FileReader();
@@ -244,7 +248,6 @@ export function EditorToolbar({ editor, title, getExportData, borderInset, onBor
           <Redo />
         </Tool>
 
-        {/* Download */}
         <Popover open={downloadOpen} onOpenChange={setDownloadOpen}>
           <Tooltip>
             <TooltipTrigger
@@ -390,7 +393,6 @@ export function EditorToolbar({ editor, title, getExportData, borderInset, onBor
         </Tool>
         <Divider />
 
-        {/* Text color */}
         <Popover>
           <Tooltip>
             <TooltipTrigger
@@ -439,7 +441,6 @@ export function EditorToolbar({ editor, title, getExportData, borderInset, onBor
           </PopoverContent>
         </Popover>
 
-        {/* Highlight */}
         <Popover>
           <Tooltip>
             <TooltipTrigger
@@ -480,7 +481,6 @@ export function EditorToolbar({ editor, title, getExportData, borderInset, onBor
           </PopoverContent>
         </Popover>
 
-        {/* Link */}
         <Popover open={linkOpen} onOpenChange={handleLinkOpenChange}>
           <Tooltip>
             <TooltipTrigger
@@ -544,7 +544,6 @@ export function EditorToolbar({ editor, title, getExportData, borderInset, onBor
         </Popover>
         <Divider />
 
-        {/* Align */}
         <Tool
           tip="Align left"
           active={currentAlign === "left"}
@@ -612,7 +611,6 @@ export function EditorToolbar({ editor, title, getExportData, borderInset, onBor
           <Minus />
         </Tool>
 
-        {/* Image */}
         <Popover open={imageOpen} onOpenChange={setImageOpen}>
           <Tooltip>
             <TooltipTrigger
@@ -654,7 +652,6 @@ export function EditorToolbar({ editor, title, getExportData, borderInset, onBor
           </PopoverContent>
         </Popover>
 
-        {/* Table */}
         <Popover open={tableOpen} onOpenChange={setTableOpen}>
           <Tooltip>
             <TooltipTrigger
@@ -732,7 +729,6 @@ export function EditorToolbar({ editor, title, getExportData, borderInset, onBor
           </PopoverContent>
         </Popover>
 
-        {/* Page border box */}
         <Popover open={borderOpen} onOpenChange={setBorderOpen}>
           <Tooltip>
             <TooltipTrigger

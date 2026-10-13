@@ -1,3 +1,4 @@
+// Takes a title; builds a safe filename slug; returns slug text.
 export function slugifyTitle(title) {
   const slug = String(title ?? "")
     .trim()
@@ -7,6 +8,7 @@ export function slugifyTitle(title) {
     .replace(/\s+/g, "-");
   return slug || "untitled-document";
 }
+// Takes raw text; prevents HTML injection in exports; returns escaped text.
 function escapeHtml(text) {
   return text
     .replace(/&/g, "&amp;")
@@ -14,6 +16,7 @@ function escapeHtml(text) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
 }
+// Takes one editor plus title and format; exports single-editor content; downloads a file.
 export function downloadDocument(editor, title, format) {
   if (!editor || typeof window === "undefined" || typeof document === "undefined") return;
   downloadData(
@@ -23,14 +26,12 @@ export function downloadDocument(editor, title, format) {
   );
 }
 
-// Same export as downloadDocument, but for prebuilt whole-document strings
-// (the paged editor concatenates all sheets before downloading).
+// Takes prebuilt whole-document data plus title and format; exports all pages together; downloads a file.
 export function downloadData(data, title, format) {
   if (!data || typeof window === "undefined" || typeof document === "undefined") return;
   const safeTitle = String(title ?? "").trim() || "Untitled document";
   const name = slugifyTitle(safeTitle);
-  // No lightweight client PDF writer here; reuse the print stylesheet
-  // (page only, no chrome) so the user picks "Save as PDF".
+  // No client PDF writer; uses print stylesheet so user picks Save as PDF.
   if (format === "pdf") {
     const prev = document.title;
     document.title = name;

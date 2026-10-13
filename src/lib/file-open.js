@@ -55,9 +55,8 @@ function firstFont(v) {
   const first = String(v ?? "").split(",")[0]?.replace(/["']/g, "").trim();
   return first || "";
 }
-// Extra marks from color/background/size/family/decoration, compared against
-// the parent so inherited values are not stamped on every run. textStyle
-// attrs merge into one mark since TipTap allows one textStyle per run.
+// Derives color/background/size/family/decoration marks, skipping inherited values.
+// Merges textStyle attrs into one mark per TipTap run.
 function styleMarks(el, parentEl, marks) {
   const has = (t) => marks.some((m) => m.type === t);
   const cs = connectedStyle(el);
@@ -98,7 +97,8 @@ function alignOf(el) {
   return v === "center" || v === "right" || v === "justify" ? v : undefined;
 }
 
-// Plain lines to blocks; light Markdown: # headings, - / * bullets, 1. ordered.
+// Takes plain text with light Markdown, builds TipTap blocks for import.
+// Returns block array for the editor.
 export function textToBlocks(raw) {
   const blocks = [];
   const bullets = [];
@@ -147,6 +147,7 @@ export function textToBlocks(raw) {
   return blocks;
 }
 
+// Takes TipTap blocks, flattens them for search and previews. Returns plain text.
 export function blocksToPlainText(blocks) {
   const out = [];
   const walk = (nodes) => {
@@ -328,6 +329,7 @@ function htmlBlocks(root, parentEl = root?.nodeType === 1 ? root : null) {
   return blocks;
 }
 
+// Takes HTML string, converts it to TipTap blocks. Returns block array.
 export function htmlToBlocks(html) {
   const doc = new DOMParser().parseFromString(String(html ?? ""), "text/html");
   const blocks = htmlBlocks(doc.body);
@@ -535,9 +537,8 @@ function titleOf(file) {
   return name || "Untitled document";
 }
 
-// Word with full fidelity: render via docx-preview (colors, alignment, sizes,
-// tables, images as base64) off-screen, then convert live DOM with computed
-// styles. Mammoth fallback for files the renderer rejects.
+// Takes Word buffer, renders via docx-preview for full fidelity. Returns TipTap blocks.
+// Falls back to Mammoth when the renderer rejects the file.
 async function docxToBlocks(buf) {
   try {
     if (typeof document === "undefined") throw new Error("browser only");
@@ -565,7 +566,7 @@ async function docxToBlocks(buf) {
   }
 }
 
-// Main entry: File to { title, content, plainText }; throws friendly Error.
+// Takes uploaded File, parses it for editor import. Returns title, content, plainText.
 export async function parseFileToDocument(file) {
   if (!file) throw new Error("No file picked.");
   if (file.size > MAX_BYTES) throw new Error("File too big — 25 MB max.");

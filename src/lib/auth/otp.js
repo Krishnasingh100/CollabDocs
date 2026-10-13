@@ -26,17 +26,19 @@ async function post(path, body) {
   }
   return data;
 }
-// 6-digit code for first-time email verification.
+// Takes email, sends verification code for new accounts. Returns auth response.
 export function sendVerificationOtp(email) {
   return post("/email-otp/send-verification-otp", { email, type: "email-verification" });
 }
-// 6-digit code for password reset (link reset is disabled on this project).
+// Takes email, sends reset code for password recovery. Returns auth response.
 export function sendPasswordResetOtp(email) {
   return post("/email-otp/send-verification-otp", { email, type: "forget-password" });
 }
+// Takes email and code, verifies new account. Returns auth response.
 export function checkVerificationOtp(email, otp) {
   return post("/email-otp/check-verification-otp", { email, otp, type: "email-verification" });
 }
+// Takes email, code, and password, resets password. Returns auth response.
 export function resetPasswordWithOtp(email, otp, password) {
   return post("/email-otp/reset-password", { email, otp, password });
 }

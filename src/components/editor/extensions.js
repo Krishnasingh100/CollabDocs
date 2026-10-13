@@ -14,6 +14,7 @@ import { Color, FontFamily, FontSize, TextStyle } from "@tiptap/extension-text-s
 import { Typography } from "@tiptap/extension-typography";
 import { Underline } from "@tiptap/extension-underline";
 import StarterKit from "@tiptap/starter-kit";
+// No input; centralizes editor features so pages behave alike; returns extension list.
 export function getEditorExtensions() {
   return [
     StarterKit.configure({

@@ -1,16 +1,8 @@
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import * as schema from "./schema";
-// Vercel-safe: neon-http uses fetch (no TCP/WebSocket pool), so it works
-// in Serverless Functions and Edge Runtime without connection leaks.
-// Do NOT use `pg` Pool or migrate-on-boot here — run migrations via
-// `bun run db:migrate` (drizzle-kit CLI) before/with deploy.
-//
-// Import-safe by design: a missing DATABASE_URL must never crash `next
-// build` (which imports route modules to collect page data) or pages that
-// don't touch the database. Instead, any actual query throws a clear error
-// at request time, where the API routes catch it and answer graceful 500
-// JSON (the client then falls back to its localStorage copy).
+// Uses fetch-based neon-http for Serverless/Edge; missing DATABASE_URL throws only at query time.
+// Run migrations via `bun run db:migrate`, never `pg` Pool or migrate-on-boot.
 const connectionString = process.env.DATABASE_URL;
 function missingDatabaseError() {
   return new Error(

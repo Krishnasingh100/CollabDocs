@@ -1,6 +1,7 @@
 "use server";
 import { redirect } from "next/navigation";
 import { checkVerificationOtp, sendVerificationOtp } from "@/lib/auth/otp";
+// Takes email and code, verifies new account. Returns error or documents redirect.
 export async function verifyOtpAction(_prevState, formData) {
   const email = String(formData.get("email") ?? "").trim();
   const otp = String(formData.get("otp") ?? "").replace(/\D/g, "");
@@ -14,6 +15,7 @@ export async function verifyOtpAction(_prevState, formData) {
   }
   redirect("/documents");
 }
+// Takes email, resends verification code. Returns sent flag or error.
 export async function resendOtpAction(_prevState, formData) {
   const email = String(formData.get("email") ?? "").trim();
   if (!email) {

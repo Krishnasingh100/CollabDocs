@@ -10,6 +10,8 @@ function friendlyAuthError(raw) {
   }
   return raw;
 }
+// Takes name, email, and password form, creates account. Returns error or redirects.
+// Sends verification code then redirects to verify-email.
 export async function signUpWithEmail(_prevState, formData) {
   const name = String(formData.get("name") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim();

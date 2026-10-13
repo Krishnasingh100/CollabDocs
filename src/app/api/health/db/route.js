@@ -1,5 +1,7 @@
 import { sql } from "drizzle-orm";
 export const dynamic = "force-dynamic";
+// GET checks database connectivity. Public scope, no auth required.
+// Returns { ok: true } or 500 { ok: false, error }.
 export async function GET() {
   try {
     const { db } = await import("@/db");

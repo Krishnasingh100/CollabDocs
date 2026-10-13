@@ -4,6 +4,7 @@ import { FileText } from "lucide-react";
 import { authClient } from "@/lib/auth/client";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+// Takes no props, shows nav with auth-aware links. Returns header UI.
 export function Navbar() {
   const { data: session } = authClient.useSession();
   const user = session?.user ?? null;

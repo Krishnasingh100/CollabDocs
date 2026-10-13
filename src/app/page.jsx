@@ -4,6 +4,7 @@ import { Features } from "@/components/landing/features";
 import { Users } from "@/components/landing/users";
 import { About } from "@/components/landing/about";
 import { Footer } from "@/components/landing/footer";
+// Takes no props, composes landing sections. Returns landing page UI.
 export default function Home() {
   return (
     <div className="flex min-h-full flex-col">

@@ -21,18 +21,22 @@ function writeStore(docs) {
     // storage full / private mode — editor still works in-memory
   }
 }
+// Takes nothing, creates unique id for new local docs. Returns id string.
 export function newLocalId() {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
     return crypto.randomUUID();
   }
   return `doc_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 }
+// Takes nothing, lists local docs for fallback UI. Returns newest-first array.
 export function listLocalDocuments() {
   return readStore().sort((a, b) => +new Date(b.updatedAt) - +new Date(a.updatedAt));
 }
+// Takes doc id, finds one local doc. Returns doc or null.
 export function getLocalDocument(id) {
   return readStore().find((d) => d.id === id) ?? null;
 }
+// Takes doc object, persists it to localStorage. Returns nothing.
 export function saveLocalDocument(doc) {
   const docs = readStore();
   const idx = docs.findIndex((d) => d.id === doc.id);
@@ -40,9 +44,11 @@ export function saveLocalDocument(doc) {
   else docs.push(doc);
   writeStore(docs);
 }
+// Takes doc id, removes it from localStorage. Returns nothing.
 export function deleteLocalDocument(id) {
   writeStore(readStore().filter((d) => d.id !== id));
 }
+// Takes title and template id, creates local doc. Returns new doc.
 export function createLocalDocument(title = "Untitled document", templateId = null) {
   const now = new Date().toISOString();
   const doc = {

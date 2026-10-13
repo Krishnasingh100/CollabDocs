@@ -14,9 +14,8 @@ function toDetail(row) {
     createdAt: row.createdAt instanceof Date ? row.createdAt.toISOString() : String(row.createdAt),
   };
 }
-// Builds the access condition for one document: personal documents belong to
-// the creator and have no organization id; organization documents belong to
-// every member of the active organization.
+// Builds access filter for one document: org id match or personal owner match.
+// Keeps personal docs private and org docs visible to members.
 function workspaceCondition(workspace, id) {
   if (workspace.kind === "organization") {
     return and(eq(documentsTable.id, id), eq(documentsTable.orgId, workspace.organizationId));
@@ -27,6 +26,8 @@ function workspaceCondition(workspace, id) {
     isNull(documentsTable.orgId),
   );
 }
+// GET loads one document in active workspace. Requires auth, 401/404 on miss.
+// Returns { document: full detail } with TipTap content.
 export async function GET(_req, ctx) {
   const { id } = await ctx.params;
   const workspace = await resolveWorkspace();
@@ -45,6 +46,8 @@ export async function GET(_req, ctx) {
     return Response.json({ error: message }, { status: 500 });
   }
 }
+// PATCH updates title/content/plainText in active workspace. Requires auth.
+// Returns { document: updated detail }, 404 when not found.
 export async function PATCH(req, ctx) {
   const { id } = await ctx.params;
   const workspace = await resolveWorkspace();
@@ -70,6 +73,8 @@ export async function PATCH(req, ctx) {
     return Response.json({ error: message }, { status: 500 });
   }
 }
+// DELETE removes one document in active workspace. Requires auth.
+// Returns { ok: true } on success, 401 when logged out.
 export async function DELETE(_req, ctx) {
   const { id } = await ctx.params;
   const workspace = await resolveWorkspace();

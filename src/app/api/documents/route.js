@@ -13,8 +13,8 @@ function toSummary(row) {
     createdAt: row.createdAt instanceof Date ? row.createdAt.toISOString() : String(row.createdAt),
   };
 }
-// Lists documents in the caller's active workspace: the active organization
-// when one is selected, otherwise the caller's personal documents.
+// GET lists documents in active workspace (org or personal). Requires auth, 401 when logged out.
+// Returns { documents: summaries } (500 with error message on DB failure).
 export async function GET() {
   const workspace = await resolveWorkspace();
   if (!workspace) return Response.json({ error: "Unauthorized" }, { status: 401 });
@@ -35,6 +35,8 @@ export async function GET() {
     return Response.json({ documents: [], error: message }, { status: 500 });
   }
 }
+// POST creates document in active workspace. Requires auth, 401 when logged out.
+// Takes title/content/plainText/templateId. Returns { document } with 201.
 export async function POST(req) {
   const workspace = await resolveWorkspace();
   if (!workspace) return Response.json({ error: "Unauthorized" }, { status: 401 });

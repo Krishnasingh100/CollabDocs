@@ -18,11 +18,13 @@ import "./editor.css";
 const PAGE_HEIGHT = 1056;
 const MAX_REFLOW_RUNS = 50;
 
+// Takes TipTap doc; checks for empty content; returns true when blank.
 function docIsEmpty(doc) {
   if (doc.childCount === 0) return true;
   return doc.childCount === 1 && doc.firstChild.isTextblock && doc.firstChild.content.size === 0;
 }
 
+// Takes view plus position; reads line top safely; returns top or null.
 function topAt(view, pos) {
   try {
     return view.coordsAtPos(pos).top;
@@ -80,6 +82,7 @@ function ensureCaretVisible(ed) {
   } catch {}
 }
 
+// Takes editor map; scrolls focused caret into view; keeps caret visible.
 function ensureFocusedCaretVisible(editorsRef) {
   try {
     for (const ed of editorsRef.current.values()) {
@@ -91,6 +94,7 @@ function ensureFocusedCaretVisible(editorsRef) {
   } catch {}
 }
 
+// Takes editor; checks collapsed selection at start; returns true at start.
 function atDocStart(ed) {
   const sel = ed.state.selection;
   if (!sel.empty) return false;
@@ -98,6 +102,7 @@ function atDocStart(ed) {
   return $from.depth <= 1 && $from.parentOffset === 0 && $from.index(0) === 0;
 }
 
+// Takes editor; checks collapsed selection at end; returns true at end.
 function atDocEnd(ed) {
   const sel = ed.state.selection;
   if (!sel.empty) return false;
@@ -243,6 +248,7 @@ function classifyLastNode(ed, contentH, padTop) {
   return { kind: "whole" };
 }
 
+// Takes document id; paginates editing across sheets; renders editor.
 export function DocumentEditor({ documentId }) {
   const [title, setTitle] = useState("Untitled document");
   const [loaded, setLoaded] = useState(false);
@@ -278,6 +284,7 @@ export function DocumentEditor({ documentId }) {
     setPageCount(next);
   }, []);
 
+  // Takes no input; measures sheet padding; returns usable content height.
   const measureContent = useCallback(() => {
     for (const sheet of sheetsRef.current.values()) {
       const el = sheet?.querySelector(".tiptap");
@@ -290,13 +297,12 @@ export function DocumentEditor({ documentId }) {
     return { contentH: PAGE_HEIGHT - 96, padTop: 48, padBottom: 48 };
   }, []);
 
+  // Takes page index plus padding; measures last child bottom; returns used height.
   const pageUsed = useCallback((i, padTop) => {
     const sheet = sheetsRef.current.get(i);
     const el = sheet?.querySelector(".tiptap");
     if (!el) return 0;
-    // .tiptap has min-height:1056px so scrollHeight never drops below a full
-    // page — measure the last child's bottom instead so short pages report
-    // small usage and pull-up (gap filling) actually runs.
+    // .tiptap min-height hides short usage; measures last child bottom; enables pull-up.
     try {
       const kids = el.children;
       if (!kids || kids.length === 0) return 0;
@@ -311,6 +317,7 @@ export function DocumentEditor({ documentId }) {
     }
   }, []);
 
+  // Takes editor plus position; measures node with margins; returns height.
   const nodeHeight = useCallback((ed, pos) => {
     try {
       const dom = ed.view.nodeDOM(pos);
@@ -324,6 +331,7 @@ export function DocumentEditor({ documentId }) {
     }
   }, []);
 
+  // Takes no input; debounces pagination; schedules reflow run.
   const scheduleReflow = useCallback(() => {
     if (reflowTimer.current) clearTimeout(reflowTimer.current);
     reflowTimer.current = setTimeout(() => {
@@ -331,6 +339,7 @@ export function DocumentEditor({ documentId }) {
     }, 30);
   }, []);
 
+  // Takes page index plus position; focuses target page; returns success.
   const focusPage = useCallback((i, pos) => {
     const count = pageCountRef.current;
     const idx = Math.max(0, Math.min(count - 1, i));
@@ -482,10 +491,7 @@ export function DocumentEditor({ documentId }) {
     return true;
   }, []);
 
-  // The flow engine: pull blocks up into gaps, push overflowing blocks down
-  // (creating sheets as needed), and drop trailing empty sheets. Pulls only
-  // fit checked blocks and pushes only strict overflows, so the two passes
-  // cannot undo each other — the loop converges instead of ping-ponging.
+  // The flow engine: pulls blocks into gaps and pushes overflow down; settles pagination.
   const reflow = useCallback(() => {
     if (reflowing.current) return;
     const count = pageCountRef.current;
@@ -551,9 +557,7 @@ export function DocumentEditor({ documentId }) {
             skippedComposing = true;
             break;
           }
-          // Straddle-aware push: a last block crossing the sheet end breaks
-          // there (its lines above stay put — the last line never vanishes);
-          // only fully-overflowed, atomic, or tiny blocks move whole.
+          // Straddle-aware push: splits crossing blocks, moves whole only when atomic or tiny.
           const verdict = classifyLastNode(ed, contentH, padTop);
           if (verdict && verdict.kind === "split") {
             try {
@@ -612,6 +616,7 @@ export function DocumentEditor({ documentId }) {
     reflowRef.current = reflow;
   });
 
+  // Takes page index plus editor; tracks live editors; refreshes words.
   const registerEditor = useCallback(
     (i, ed) => {
       if (ed) {
@@ -634,11 +639,13 @@ export function DocumentEditor({ documentId }) {
     [scheduleReflow],
   );
 
+  // Takes page index plus element; tracks sheet elements; enables measuring.
   const registerDom = useCallback((i, el) => {
     if (el) sheetsRef.current.set(i, el);
     else sheetsRef.current.delete(i);
   }, []);
 
+  // Takes page index; marks active page; updates toolbar.
   const onPageFocus = useCallback((i) => {
     activeIndexRef.current = i;
     setCurrentPage(i + 1);
@@ -646,6 +653,7 @@ export function DocumentEditor({ documentId }) {
     if (ed && !ed.isDestroyed) setActiveEditor(ed);
   }, []);
 
+  // Takes all pages; skips empty sheets; returns combined content plus text.
   const buildFullDoc = useCallback(() => {
     const content = [];
     const texts = [];
@@ -664,6 +672,7 @@ export function DocumentEditor({ documentId }) {
     return { content, text: texts.join("\n") };
   }, []);
 
+  // Takes all pages; concatenates HTML plus JSON; returns export data.
   const getExportData = useCallback(() => {
     const { content, text } = buildFullDoc();
     let html = "";
@@ -680,6 +689,7 @@ export function DocumentEditor({ documentId }) {
     return { json: { type: "doc", content }, html, text };
   }, [buildFullDoc]);
 
+  // Takes current content plus title; saves locally then API; updates save state.
   const persist = useCallback(async () => {
     const now = new Date().toISOString();
     const { content, text } = buildFullDoc();
@@ -713,12 +723,14 @@ export function DocumentEditor({ documentId }) {
     persistRef.current = persist;
   });
 
+  // Takes no input; saves immediately; sets saving state.
   const saveNow = useCallback(() => {
     if (saveTimer.current) clearTimeout(saveTimer.current);
     setSaveState("saving");
     void persistRef.current?.();
   }, []);
 
+  // Takes page update plus transaction; refreshes words and reflows; schedules save.
   const onPageUpdate = useCallback(
     (i, ed, transaction) => {
       let words = 0;
@@ -733,12 +745,8 @@ export function DocumentEditor({ documentId }) {
         saveTimer.current = setTimeout(() => persistRef.current?.(), 900);
         reflowRuns.current = 0;
       }
-      // User edits reflow synchronously so each keystroke flows exactly its
-      // own overflow (Word-like) instead of piling lines up past the sheet
-      // end and yanking them all at once. Reflow's own moves stay async.
-      // The reflow skips composing pages itself and retries afterwards.
-      // After DOM settles, scroll the focused caret into view so Enter past
-      // the page end pulls the whole page down with the pointer.
+      // User edits reflow at once for exact overflow; reflow moves stay async.
+      // Skips composing pages, then scrolls focused caret into view.
       if (meta) scheduleReflow();
       else {
         reflowRef.current?.();
@@ -749,19 +757,14 @@ export function DocumentEditor({ documentId }) {
   );
 
   const focusTitle = useCallback(() => {
-    // The menubar restores focus to its trigger when it closes, which would
-    // steal focus back from the title input. Defer past the close so the
-    // cursor lands in the title with the current name (e.g. "Untitled
-    // document") selected and ready to type over.
+    // No input; defers title focus past menu close; selects title for typing.
     window.setTimeout(() => {
       titleRef.current?.focus();
       titleRef.current?.select();
     }, 60);
   }, []);
 
-  // Cross-page flow controller for the per-page keymaps (Backspace/Delete at
-  // page edges, arrows across pages). Always the latest closures: the page
-  // extensions call through apiRef at keypress time.
+  // Cross-page keys use latest closures; parent answers through apiRef at keypress.
   useEffect(() => {
     apiRef.current = {
       onBackspace(i) {
@@ -796,9 +799,7 @@ export function DocumentEditor({ documentId }) {
     if (saveTimer.current) clearTimeout(saveTimer.current);
     if (titleTimer.current) clearTimeout(titleTimer.current);
     (async () => {
-      // Reset first so switching documents never flashes the previous doc's
-      // pages/editors (remount keys below also drop their undo history).
-      // Runs before the first await, i.e. in the same tick as the effect.
+      // Reset before first await so switching docs never flashes previous pages.
       setLoaded(false);
       loadedRef.current = false;
       activeIndexRef.current = 0;
@@ -914,6 +915,7 @@ export function DocumentEditor({ documentId }) {
     return () => clearTimeout(t);
   }, [documentId]);
 
+  // Takes inset value; clamps and persists border; updates border.
   const changeBorderInset = useCallback(
     (next) => {
       const v = Math.min(Math.max(0, Math.round(Number(next) || 0)), 48);
@@ -999,9 +1001,7 @@ export function DocumentEditor({ documentId }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [saveNow]);
 
-  // Clicks landing between sheets (gray gap) focus the nearest page edge, so
-  // the caret always sits inside a real page. Clicks inside a sheet use the
-  // native editor behavior.
+  // Takes gap click; finds nearest page edge; focuses that page.
   const routeGapClick = useCallback(
     (e) => {
       if (e.target.closest(".docs-sheet")) return;
@@ -1029,6 +1029,7 @@ export function DocumentEditor({ documentId }) {
     [focusPage],
   );
 
+  // Takes next title; debounces title save locally plus API; updates title.
   const saveTitle = useCallback(
     (next) => {
       setTitle(next);
@@ -1062,7 +1063,6 @@ export function DocumentEditor({ documentId }) {
 
   return (
     <div className="flex min-h-screen flex-col bg-[#f8f9fa]">
-      {/* Slim header: toggle + title + save state, one line */}
       <header className="sticky top-0 z-40 border-b border-[#dadce0] bg-white">
         <div className="flex h-12 items-center gap-2 px-3">
           <Link

@@ -37,11 +37,8 @@ function readError(result, fallback) {
   return fallback;
 }
 
-// Organization panel: member count and member list (Google-Docs-style people
-// view), invite by email, pending invitations sent, leaving, and joining
-// organizations the user is invited to. Rendered in the documents header when
-// signed in; in the personal workspace it only appears while the user has
-// pending invitations to join.
+// Takes no props, manages org members, invites, and inbox. Returns people dialog UI.
+// Hides in personal workspace unless pending invitations exist.
 export function OrganizationPanel() {
   const router = useRouter();
   const { data: session } = authClient.useSession();

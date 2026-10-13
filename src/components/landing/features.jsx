@@ -26,6 +26,7 @@ const items = [
     detail: "Sign in with Neon Auth. Documents stay private to your account.",
   },
 ];
+// Takes no props, lists editor capabilities. Returns features section UI.
 export function Features() {
   return (
     <section

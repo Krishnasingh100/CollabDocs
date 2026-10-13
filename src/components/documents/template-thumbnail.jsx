@@ -114,6 +114,7 @@ function PreviewBody({ template }) {
       );
   }
 }
+// Takes template and priority flag, renders gallery tile. Returns thumbnail UI.
 export function TemplateThumbnail({ template, priority = false }) {
   // Blank template: the artwork fills the whole tile when set,
   // otherwise the + icon fills the whole page.

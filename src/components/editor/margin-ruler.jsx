@@ -5,6 +5,7 @@ const PX_PER_INCH = 96;
 const MIN_MARGIN = 0;
 const MIN_CONTENT = 200;
 export const DEFAULT_MARGIN = 56;
+// Takes left/right margins plus change callback; edits side margins by drag or keys; renders ruler.
 export function MarginRuler({ left, right, onChange }) {
   const trackRef = useRef(null);
   const [width, setWidth] = useState(816);
@@ -20,6 +21,7 @@ export function MarginRuler({ left, right, onChange }) {
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
+  // Takes candidate margins plus width; keeps content wide enough; returns clamped margins.
   const clamp = useCallback(
     (l, r) => {
       const maxEach = Math.max(0, Math.floor(width / 2 - MIN_CONTENT / 2));
@@ -36,9 +38,11 @@ export function MarginRuler({ left, right, onChange }) {
     },
     [width],
   );
+  // Takes drag side plus pointer position; starts margin drag; stores start values.
   const beginDrag = (side, clientX) => {
     dragRef.current = { side, startX: clientX, startLeft: left, startRight: right };
   };
+  // Takes pointer position; continues margin drag; updates margins.
   const moveDrag = (clientX) => {
     const d = dragRef.current;
     if (!d) return;
@@ -49,6 +53,7 @@ export function MarginRuler({ left, right, onChange }) {
       onChange(clamp(d.startLeft, d.startRight - dx));
     }
   };
+  // No input; ends margin drag; clears drag state.
   const endDrag = () => {
     dragRef.current = null;
   };
@@ -94,6 +99,7 @@ export function MarginRuler({ left, right, onChange }) {
       );
     }
   }
+  // Takes side plus direction; nudges margin by keyboard step; updates margins.
   const step = (side, dir, big) => {
     const d = big ? 8 : 1;
     if (side === "left") onChange(clamp(left + dir * d, right));
@@ -108,7 +114,6 @@ export function MarginRuler({ left, right, onChange }) {
       aria-label="Page margin ruler. Drag markers to change side margins."
       className="relative hidden h-7 w-full overflow-hidden rounded-t-md border border-[#dadce0] border-b-0 bg-white select-none sm:block print:hidden"
     >
-      {/* margin shading */}
       <div
         className="absolute inset-y-0 left-0 bg-[#f1f3f4]"
         style={{ width: left }}
@@ -119,11 +124,9 @@ export function MarginRuler({ left, right, onChange }) {
         style={{ width: right }}
         aria-hidden="true"
       />
-      {/* ticks */}
       <div className="absolute inset-0" aria-hidden="true">
         {ticks}
       </div>
-      {/* content edge lines */}
       <div
         className="absolute inset-y-0 w-px bg-[#1a73e8]/60"
         style={{ left }}
@@ -135,7 +138,6 @@ export function MarginRuler({ left, right, onChange }) {
         aria-hidden="true"
       />
 
-      {/* left marker */}
       <div
         role="slider"
         tabIndex={0}
@@ -170,7 +172,6 @@ export function MarginRuler({ left, right, onChange }) {
         />
       </div>
 
-      {/* right marker */}
       <div
         role="slider"
         tabIndex={0}

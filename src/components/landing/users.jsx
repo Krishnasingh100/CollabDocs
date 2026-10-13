@@ -20,6 +20,7 @@ const items = [
     detail: "Reports and proposals with tables and clean print output.",
   },
 ];
+// Takes no props, lists who CollabDocs serves. Returns users section UI.
 export function Users() {
   return (
     <section

@@ -26,6 +26,7 @@ import { Label } from "@/components/ui/label";
 
 export const WORKSPACE_CHANGED_EVENT = "workspace-changed";
 
+// Takes nothing, broadcasts workspace change event. Returns nothing.
 export function notifyWorkspaceChanged() {
   if (typeof window !== "undefined") {
     window.dispatchEvent(new CustomEvent(WORKSPACE_CHANGED_EVENT));
@@ -50,10 +51,8 @@ function extractError(result, fallback) {
   return fallback;
 }
 
-// Workspace switcher: Personal workspace plus every organization the user
-// belongs to, with a dialog to create a new organization (name, slug, logo).
-// Switching sets the active organization in the signed session cookie, which
-// is what the documents API uses to scope personal vs organization documents.
+// Takes optional menu side, switches personal and org workspaces. Returns switcher UI.
+// Sets active org in session cookie so documents API scopes correctly.
 export function WorkspaceSwitcher({ menuSide = "bottom" }) {
   const router = useRouter();
   const { data: session } = authClient.useSession();

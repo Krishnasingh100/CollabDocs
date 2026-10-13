@@ -23,8 +23,8 @@ function GoogleIcon() {
     </svg>
   );
 }
-// Google-only sign-in. GitHub removed: it needs a custom OAuth app in
-// Neon Console, Google works with shared credentials.
+// Takes no props, starts Google OAuth for sign-in. Returns Google button and error UI.
+// Uses shared Google credentials; GitHub needs custom OAuth app.
 export function OAuthButtons() {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState(null);

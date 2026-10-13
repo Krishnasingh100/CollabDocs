@@ -1,6 +1,7 @@
 "use server";
 import { redirect } from "next/navigation";
 import { resetPasswordWithOtp } from "@/lib/auth/otp";
+// Takes email, code, and new password, resets password. Returns error or sign-in redirect.
 export async function resetPasswordAction(_prevState, formData) {
   const email = String(formData.get("email") ?? "").trim();
   const otp = String(formData.get("otp") ?? "").replace(/\D/g, "");

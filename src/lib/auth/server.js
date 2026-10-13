@@ -1,11 +1,6 @@
 import { createNeonAuth } from "@neondatabase/auth/next/server";
-// Single server-side auth instance: API handler, route protection,
-// sessions, and email/password methods all come from here.
-// Needs NEON_AUTH_BASE_URL + NEON_AUTH_COOKIE_SECRET (see .env.example).
-//
-// Build-safe: `next build` collects /api/auth/[...path] without live env.
-// Fallback placeholders let build pass; runtime calls still need real env.
-// Missing env logs a warning once.
+// Server auth instance for API handler, sessions, and email methods. Needs Neon Auth env.
+// Uses placeholders at build time so `next build` passes without live env.
 const baseUrl = process.env.NEON_AUTH_BASE_URL ?? "https://placeholder.neonauth.local/auth";
 const cookieSecret =
   process.env.NEON_AUTH_COOKIE_SECRET ?? "placeholder-secret-32-chars-minimum-000000";

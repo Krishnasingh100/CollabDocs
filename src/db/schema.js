@@ -1,13 +1,7 @@
 import { desc } from "drizzle-orm";
 import { index, jsonb, pgTable, text, timestamp, uuid, varchar } from "drizzle-orm/pg-core";
-// CollabDocs documents. `content` stores the TipTap JSON document so the
-// editor restores formatting, tables, images, lists, etc. `plainText` is a
-// truncated text copy used for search and list previews without parsing JSON.
-// `userId` is the Neon Auth (Better Auth) user id that created the document.
-// Personal documents have `orgId = null` and stay visible only to the
-// creator. Organization documents have `orgId` set to the Better Auth
-// organization id and are visible to every member of that organization.
-// `templateId` records which gallery template the document was created from.
+// Documents table stores TipTap JSON plus plainText for search and previews.
+// Personal docs have null orgId; org docs share with every org member.
 export const documentsTable = pgTable(
   "documents",
   {

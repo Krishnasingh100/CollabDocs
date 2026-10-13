@@ -1,6 +1,7 @@
 "use server";
 import { redirect } from "next/navigation";
 import { sendPasswordResetOtp } from "@/lib/auth/otp";
+// Takes email form, sends password reset code. Returns error or reset-page redirect.
 export async function forgotPasswordAction(_prevState, formData) {
   const email = String(formData.get("email") ?? "").trim();
   if (!email) {

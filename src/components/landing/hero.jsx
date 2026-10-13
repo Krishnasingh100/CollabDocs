@@ -2,6 +2,7 @@ import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+// Takes no props, introduces CollabDocs value. Returns hero section UI.
 export function Hero() {
   return (
     <section className="relative overflow-hidden">

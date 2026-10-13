@@ -1,3 +1,4 @@
 import { auth } from "@/lib/auth/server";
-// Proxies every Managed Better Auth API through /api/auth/*.
+// GET/POST proxies Managed Better Auth API through /api/auth/*. Public scope.
+// Returns auth JSON from Better Auth handler.
 export const { GET, POST } = auth.handler();

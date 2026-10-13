@@ -17,8 +17,8 @@ function initialOf(name, email) {
   const from = name?.trim() || email?.trim() || "?";
   return from.charAt(0).toUpperCase();
 }
-// Professional account menu for the top-right corner: avatar button with
-// name/email header, quick links, and sign out.
+// Takes no props, reads session for avatar menu. Returns account dropdown UI.
+// Shows local workspace state when signed out, sign-out action when signed in.
 export function AccountMenu() {
   const router = useRouter();
   const { data: session, isPending } = authClient.useSession();

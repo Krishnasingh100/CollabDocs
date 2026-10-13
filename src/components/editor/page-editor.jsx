@@ -6,10 +6,7 @@ import { EditorContent, useEditor } from "@tiptap/react";
 import { getEditorExtensions } from "./extensions";
 import "./editor.css";
 
-// Cross-page keys for one sheet. Every handler returns false unless the
-// caret sits exactly at the page edge, so all normal editing (lists, tables,
-// mid-document arrows) keeps TipTap's default behavior. The parent answers
-// through apiRef, which always points at the latest flow controller.
+// Takes page index plus flow controller ref; routes edge keys across pages; returns TipTap extension.
 function pageFlowExtension(pageIndex, apiRef) {
   return Extension.create({
     name: "pageFlow",
@@ -27,10 +24,7 @@ function pageFlowExtension(pageIndex, apiRef) {
   });
 }
 
-// One real page: a fixed-height sheet hosting its own TipTap editor.
-// Content arrives once via initialContent; afterwards the parent moves nodes
-// between pages with transactions, never by replacing content (so the caret,
-// IME composition, and undo history survive reflow).
+// Takes page index plus callbacks; hosts one fixed sheet editor; renders editable page.
 export function PageEditor({
   pageIndex,
   initialContent,

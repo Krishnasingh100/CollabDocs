@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/menubar";
 import { createLocalDocument, deleteLocalDocument } from "@/lib/documents";
 import { downloadData, downloadDocument } from "./download";
+// Takes editor plus document actions; exposes file/edit menus; renders menubar.
 export function DocumentMenubar({
   editor,
   documentId,
@@ -55,6 +56,7 @@ export function DocumentMenubar({
   }, [editor]);
   const canUndo = editor?.can().undo() ?? false;
   const canRedo = editor?.can().redo() ?? false;
+  // Takes no input; creates blank document via API with local fallback; opens new document.
   const createDoc = async () => {
     try {
       const res = await fetch("/api/documents", {
@@ -73,6 +75,7 @@ export function DocumentMenubar({
       router.push(`/documents/${local.id}`);
     }
   };
+  // Takes no input; deletes local plus server copy after confirm; returns to list.
   const removeDoc = async () => {
     const confirmed = window.confirm("Delete this document? This cannot be undone.");
     if (!confirmed) return;
@@ -84,6 +87,7 @@ export function DocumentMenubar({
     }
     router.push("/documents");
   };
+  // Takes format plus export data; saves whole document; downloads a file.
   const doDownload = (format) => {
     if (getExportData) {
       const data = getExportData();
@@ -94,6 +98,7 @@ export function DocumentMenubar({
     }
     downloadDocument(editor, title, format);
   };
+  // Takes style value; applies block style at selection; updates text.
   const applyStyle = (v) => {
     if (!editor) return;
     if (v === "p") editor.chain().focus().setParagraph().run();
@@ -104,12 +109,14 @@ export function DocumentMenubar({
         .setHeading({ level: Number(v.slice(1)) })
         .run();
   };
+  // Takes image URL input; inserts image at selection; closes dialog.
   const insertImageUrl = () => {
     if (!imageUrl.trim() || !editor) return;
     editor.chain().focus().setImage({ src: imageUrl.trim() }).run();
     setImageUrl("");
     setImageOpen(false);
   };
+  // Takes image file; reads it as data URL for insertion; keeps menu state.
   const uploadImage = (file) => {
     if (!file || !editor) return;
     const reader = new FileReader();

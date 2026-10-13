@@ -1,4 +1,5 @@
 import Link from "next/link";
+// Takes no props, links landing sections. Returns footer UI.
 export function Footer() {
   return (
     <footer className="border-t border-border/70 bg-secondary/40">

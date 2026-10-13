@@ -12,6 +12,7 @@ export const metadata = {
   description:
     "CollabDocs is a personal document editor with starter templates, a clean page view, and one-click export to PDF, HTML, text, or JSON.",
 };
+// Takes children, provides fonts and tooltip context. Returns root HTML shell.
 export default function RootLayout({ children }) {
   return (
     <html

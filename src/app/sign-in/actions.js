@@ -10,6 +10,8 @@ function friendlyAuthError(raw) {
   }
   return raw;
 }
+// Takes email and password form, signs user in. Returns error object or redirects.
+// Redirects to verify-email for unverified accounts, to /documents on success.
 export async function signInWithEmail(_prevState, formData) {
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");

@@ -20,6 +20,7 @@ const items = [
     detail: "Download as PDF, HTML, text, or JSON, or print clean pages.",
   },
 ];
+// Takes no props, explains workspace and export. Returns about section UI.
 export function About() {
   return (
     <section
