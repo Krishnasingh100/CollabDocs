@@ -74,6 +74,7 @@ export default function DocumentsPage() {
   const fileRef = useRef(null);
   const [query, setQuery] = useState("");
   const [copiedId, setCopiedId] = useState(null);
+  const [createError, setCreateError] = useState(null);
   const { data: session } = authClient.useSession();
   const user = session?.user ?? null;
   const { data: activeOrganization } = authClient.useActiveOrganization();
@@ -118,10 +119,16 @@ export default function DocumentsPage() {
   }, [docs, deferredQuery]);
   const createFromTemplate = async (t) => {
     setCreating(true);
+    setCreateError(null);
+    // Hanging API calls used to freeze every gallery button with no feedback.
+    // Aborts into the local fallback so a click always opens something.
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 15000);
     try {
       const res = await fetch("/api/documents", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
         body: JSON.stringify({
           title: t.title,
           content: t.content,
@@ -129,6 +136,7 @@ export default function DocumentsPage() {
           templateId: t.id,
         }),
       });
+      clearTimeout(timer);
       if (res.ok) {
         const data = await res.json();
         router.push(`/documents/${data.document.id}`);
@@ -136,11 +144,16 @@ export default function DocumentsPage() {
       }
       throw new Error("api failed");
     } catch {
-      const local = createLocalDocument(t.title, t.id);
-      if (t.content) {
-        saveLocalDocument({ ...local, content: t.content, plainText: t.plainText });
+      clearTimeout(timer);
+      try {
+        const local = createLocalDocument(t.title, t.id);
+        if (t.content) {
+          saveLocalDocument({ ...local, content: t.content, plainText: t.plainText });
+        }
+        router.push(`/documents/${local.id}`);
+      } catch (e) {
+        setCreateError(e instanceof Error ? e.message : "Could not create document.");
       }
-      router.push(`/documents/${local.id}`);
     } finally {
       setCreating(false);
     }
@@ -277,6 +290,11 @@ export default function DocumentsPage() {
         {openError && (
           <p role="alert" className="text-sm text-destructive">
             {openError}
+          </p>
+        )}
+        {createError && (
+          <p role="alert" className="text-sm text-destructive">
+            {createError} — tell support what you clicked.
           </p>
         )}
         <input

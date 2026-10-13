@@ -2,16 +2,31 @@
 import { createClient } from "@liveblocks/client";
 import { createRoomContext } from "@liveblocks/react";
 
-const publicApiKey = process.env.NEXT_PUBLIC_LIVEBLOCKS_PUBLIC_KEY ?? "";
+// Sanitizes the public key: trims whitespace plus pasted quotes. Returns clean text.
+function cleanKey(value) {
+  return String(value ?? "")
+    .trim()
+    .replace(/^["']+|["']+$/g, "");
+}
 
-// Presence-only client for now: proves the Liveblocks connection per document.
-// Yjs document sync lands on top of this same room next.
-const client = createClient({
-  publicApiKey,
-  throttle: 100,
-});
+const publicApiKey = cleanKey(process.env.NEXT_PUBLIC_LIVEBLOCKS_PUBLIC_KEY);
+// Creates the client only with a real publishable key. A missing or pasted
+// secret key used to throw during module evaluation and break every
+// document page. Disabled state keeps the editor fully usable offline.
+const liveblocksEnabled = publicApiKey.startsWith("pk_");
 
-const { RoomProvider, useOthers } = createRoomContext(client);
+let RoomProvider = null;
+let useOthersHook = null;
+if (liveblocksEnabled) {
+  const client = createClient({ publicApiKey, throttle: 100 });
+  const room = createRoomContext(client);
+  RoomProvider = room.RoomProvider;
+  useOthersHook = room.useOthers;
+} else if (typeof window !== "undefined") {
+  console.warn(
+    "[liveblocks] Disabled: set NEXT_PUBLIC_LIVEBLOCKS_PUBLIC_KEY to a pk_ key. Presence stays off; editing works.",
+  );
+}
 
 const AVATAR_COLORS = ["#1a73e8", "#0b8043", "#d97706", "#7c3aed", "#dc2626", "#0d9488"];
 
@@ -32,7 +47,9 @@ function initialsOf(info) {
 }
 
 // Takes document id plus children; scopes presence to one document room. Returns provider UI.
+// Passes children through untouched when Liveblocks is disabled.
 export function LiveDocRoom({ documentId, children }) {
+  if (!RoomProvider) return <>{children}</>;
   return (
     <RoomProvider
       id={documentId}
@@ -44,10 +61,16 @@ export function LiveDocRoom({ documentId, children }) {
   );
 }
 
+// Takes document id, org id, plus children; scopes presence to org documents.
+// Returns the room provider for shared workspaces, plain children otherwise.
+// Personal documents never touch Liveblocks: no usage burned, no presence leaked.
+export function OrgDocRoom({ documentId, orgId, children }) {
+  if (!orgId) return <>{children}</>;
+  return <LiveDocRoom documentId={documentId}>{children}</LiveDocRoom>;
+}
 // Takes no props; shows who else views this document. Returns avatar stack UI.
-// Renders nothing when alone so the header stays clean until someone joins.
-export function PresenceAvatars() {
-  const others = useOthers();
+function PresenceAvatarsInner() {
+  const others = useOthersHook();
   if (!others || others.length === 0) return null;
   const shown = others.slice(0, 5);
   const extra = others.length - shown.length;
@@ -73,4 +96,11 @@ export function PresenceAvatars() {
       )}
     </span>
   );
+}
+
+// Takes no props; shows who else views this document. Returns avatar stack UI.
+// Renders nothing when alone or when Liveblocks is disabled.
+export function PresenceAvatars() {
+  if (!useOthersHook) return null;
+  return <PresenceAvatarsInner />;
 }

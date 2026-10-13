@@ -98,7 +98,7 @@ function OrgIcon({ logo, name, boxClassName = "size-7 rounded-md", iconClassName
 // Sets active org in session cookie so documents API scopes correctly.
 export function WorkspaceSwitcher({ menuSide = "bottom" }) {
   const router = useRouter();
-  const { data: session } = authClient.useSession();
+  const { data: session, refetch: refetchSession } = authClient.useSession();
   const { data: organizations } = authClient.useListOrganizations();
   const { data: activeOrganization } = authClient.useActiveOrganization();
   const [switching, setSwitching] = useState(false);
@@ -146,6 +146,13 @@ export function WorkspaceSwitcher({ menuSide = "bottom" }) {
       return;
     } finally {
       setSwitching(false);
+    }
+    // Refreshes the client session store so the navbar label plus documents
+    // switch together. Router refresh alone leaves client hooks stale.
+    try {
+      await refetchSession();
+    } catch {
+      // Store refresh is best-effort; server scope already switched.
     }
     notifyWorkspaceChanged();
     router.refresh();
@@ -207,6 +214,11 @@ export function WorkspaceSwitcher({ menuSide = "bottom" }) {
         } catch {
           // Created already; workspace refresh picks up membership.
         }
+      }
+      try {
+        await refetchSession();
+      } catch {
+        // Store refresh is best-effort; server scope already switched.
       }
       setCreateOpen(false);
       notifyWorkspaceChanged();
