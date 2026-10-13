@@ -11,6 +11,7 @@ import { DEFAULT_MARGIN, MarginRuler } from "./margin-ruler";
 import { DocumentMenubar } from "./document-menubar";
 import { AccountMenu } from "@/components/auth/account-menu";
 import { PageEditor } from "./page-editor";
+import { PresenceAvatars } from "./live-room";
 import { buildSettleSignature, isSettleCycle, serializeDocJsonToHtml } from "./document-styles";
 import "./editor.css";
 
@@ -1148,7 +1149,8 @@ export function DocumentEditor({ documentId }) {
               </>
             )}
           </span>
-          <span className="ml-auto flex shrink-0 items-center">
+          <span className="ml-auto flex shrink-0 items-center gap-2">
+            <PresenceAvatars />
             <AccountMenu />
           </span>
         </div>

@@ -1,7 +1,17 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Building2, Check, ChevronsUpDown, Plus, UserRound } from "lucide-react";
+import Image from "next/image";
+import {
+  Building2,
+  Check,
+  ChevronsUpDown,
+  ImagePlus,
+  Plus,
+  Upload,
+  UserRound,
+  X,
+} from "lucide-react";
 import { authClient } from "@/lib/auth/client";
 import { Button } from "@/components/ui/button";
 import {
@@ -57,6 +67,33 @@ function readOrg(result) {
   return result?.data ?? null;
 }
 
+// Takes logo URL plus name; shows the org image or a monochrome fallback tile. Returns icon UI.
+function OrgIcon({ logo, name, boxClassName = "size-7 rounded-md", iconClassName = "size-4" }) {
+  if (logo) {
+    return (
+      <span
+        className={`flex shrink-0 items-center justify-center overflow-hidden border border-border bg-muted ${boxClassName}`}
+      >
+        <Image
+          src={logo}
+          alt={`${name ?? "Organization"} logo`}
+          width={28}
+          height={28}
+          unoptimized
+          className="size-full object-cover"
+        />
+      </span>
+    );
+  }
+  return (
+    <span
+      className={`flex shrink-0 items-center justify-center bg-foreground text-background ${boxClassName}`}
+    >
+      <Building2 className={iconClassName} />
+    </span>
+  );
+}
+
 // Takes optional menu side, switches personal and org workspaces. Returns switcher UI.
 // Sets active org in session cookie so documents API scopes correctly.
 export function WorkspaceSwitcher({ menuSide = "bottom" }) {
@@ -72,6 +109,7 @@ export function WorkspaceSwitcher({ menuSide = "bottom" }) {
   const [logo, setLogo] = useState("");
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState(null);
+  const [logoError, setLogoError] = useState(null);
   const [switchError, setSwitchError] = useState(null);
 
   const user = session?.user ?? null;
@@ -118,8 +156,27 @@ export function WorkspaceSwitcher({ menuSide = "bottom" }) {
     setSlug("");
     setSlugTouched(false);
     setLogo("");
+    setLogoError(null);
     setCreateError(null);
     setCreateOpen(true);
+  };
+
+  // Takes an image file; reads it as a data URL for the org logo. Returns nothing.
+  const readLogoFile = (file) => {
+    if (!file) return;
+    setLogoError(null);
+    if (!String(file.type ?? "").startsWith("image/")) {
+      setLogoError("Pick an image file.");
+      return;
+    }
+    if (file.size > 512 * 1024) {
+      setLogoError("Image must be under 512 KB.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => setLogo(String(reader.result ?? ""));
+    reader.onerror = () => setLogoError("Could not read the image.");
+    reader.readAsDataURL(file);
   };
 
   const createOrganization = async () => {
@@ -169,9 +226,13 @@ export function WorkspaceSwitcher({ menuSide = "bottom" }) {
           disabled={switching}
           className="flex w-full items-center gap-2 rounded-md px-1 py-1 text-left outline-none transition hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
         >
-          <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground">
-            {activeOrg ? <Building2 className="size-4" /> : <UserRound className="size-4" />}
-          </span>
+          {activeOrg ? (
+            <OrgIcon logo={activeOrg.logo} name={activeOrg.name} />
+          ) : (
+            <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-foreground text-background">
+              <UserRound className="size-4" />
+            </span>
+          )}
           <span className="flex min-w-0 flex-1 flex-col">
             <span className="truncate text-xs font-medium text-foreground">
               {activeOrg ? "Organization" : "Personal"}
@@ -197,7 +258,7 @@ export function WorkspaceSwitcher({ menuSide = "bottom" }) {
             </DropdownMenuItem>
             {orgs.map((org) => (
               <DropdownMenuItem key={org.id} onClick={() => switchWorkspace(org.id)}>
-                <Building2 />
+                <OrgIcon logo={org.logo} name={org.name} />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate">{org.name}</span>
                   <span className="block truncate text-xs text-muted-foreground">{org.slug}</span>
@@ -260,15 +321,69 @@ export function WorkspaceSwitcher({ menuSide = "bottom" }) {
               </p>
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="org-logo">Logo URL (optional)</Label>
-              <Input
-                id="org-logo"
-                value={logo}
-                onChange={(e) => setLogo(e.target.value)}
-                placeholder="https://…"
-                inputMode="url"
-                autoComplete="off"
-              />
+              <Label>Logo (optional)</Label>
+              <div className="flex items-center gap-3">
+                {logo ? (
+                  <Image
+                    src={logo}
+                    alt="Organization logo preview"
+                    width={48}
+                    height={48}
+                    unoptimized
+                    className="size-12 shrink-0 rounded-lg border border-border object-cover"
+                  />
+                ) : (
+                  <span className="flex size-12 shrink-0 items-center justify-center rounded-lg border border-dashed border-border bg-muted text-muted-foreground">
+                    <ImagePlus className="size-5" />
+                  </span>
+                )}
+                <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+                  <div className="flex flex-wrap gap-1.5">
+                    <label className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg bg-foreground px-3 text-sm font-medium text-background outline-none transition hover:bg-foreground/90 focus-visible:ring-2 focus-visible:ring-ring">
+                      <Upload className="size-3.5" />
+                      Upload image
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          readLogoFile(e.target.files?.[0]);
+                          e.target.value = "";
+                        }}
+                      />
+                    </label>
+                    {logo && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setLogo("");
+                          setLogoError(null);
+                        }}
+                      >
+                        <X />
+                        Remove
+                      </Button>
+                    )}
+                  </div>
+                  <Input
+                    value={logo.startsWith("data:") ? "" : logo}
+                    onChange={(e) => {
+                      setLogoError(null);
+                      setLogo(e.target.value.trim());
+                    }}
+                    placeholder="or paste image URL"
+                    inputMode="url"
+                    autoComplete="off"
+                  />
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">Square images under 512 KB look best.</p>
+              {logoError && (
+                <p role="alert" className="text-xs text-destructive">
+                  {logoError}
+                </p>
+              )}
             </div>
             {createError && (
               <p role="alert" className="text-sm text-destructive">
@@ -280,7 +395,11 @@ export function WorkspaceSwitcher({ menuSide = "bottom" }) {
             <Button variant="outline" onClick={() => setCreateOpen(false)} disabled={creating}>
               Cancel
             </Button>
-            <Button onClick={createOrganization} disabled={!name.trim() || creating}>
+            <Button
+              onClick={createOrganization}
+              disabled={!name.trim() || creating}
+              className="bg-foreground text-background hover:bg-foreground/90"
+            >
               {creating ? "Creating…" : "Create"}
             </Button>
           </DialogFooter>

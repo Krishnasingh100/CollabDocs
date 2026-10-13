@@ -1,10 +1,11 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { Check, Loader2, LogOut, Mail, UserPlus, Users, X } from "lucide-react";
 import { authClient } from "@/lib/auth/client";
 import { notifyWorkspaceChanged } from "@/components/auth/workspace-switcher";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -233,14 +234,37 @@ export function OrganizationPanel() {
         </Badge>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>{activeOrg ? activeOrg.name : "Invitations"}</DialogTitle>
-          <DialogDescription>
-            {activeOrg
-              ? `${members.length} ${members.length === 1 ? "person" : "people"} in this organization. Organization documents are shared with everyone here.`
-              : "Organizations you are invited to join."}
-          </DialogDescription>
-        </DialogHeader>
+        {activeOrg ? (
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              {activeOrg.logo ? (
+                <Image
+                  src={activeOrg.logo}
+                  alt={`${activeOrg.name} logo`}
+                  width={40}
+                  height={40}
+                  unoptimized
+                  className="size-10 shrink-0 rounded-lg border border-border object-cover"
+                />
+              ) : (
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-foreground text-lg font-semibold text-background">
+                  {initialOf(activeOrg.name)}
+                </span>
+              )}
+              <div className="min-w-0">
+                <DialogTitle className="truncate">{activeOrg.name}</DialogTitle>
+                <DialogDescription>
+                  Organization · {members.length} {members.length === 1 ? "person" : "people"}
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+        ) : (
+          <DialogHeader>
+            <DialogTitle>Invitations</DialogTitle>
+            <DialogDescription>Organizations you are invited to join.</DialogDescription>
+          </DialogHeader>
+        )}
 
         <div className="flex max-h-[60vh] flex-col gap-5 overflow-y-auto">
           {activeOrg && (
@@ -256,6 +280,12 @@ export function OrganizationPanel() {
                       className="flex items-center gap-2.5 rounded-md border border-border px-2 py-1.5"
                     >
                       <Avatar className="size-7">
+                        {(member.user?.image ?? member.image) && (
+                          <AvatarImage
+                            src={member.user?.image ?? member.image}
+                            alt={member.user?.name ?? member.user?.email ?? "Member"}
+                          />
+                        )}
                         <AvatarFallback className="text-xs">
                           {initialOf(member.user?.name ?? member.user?.email ?? member.email)}
                         </AvatarFallback>
@@ -305,7 +335,12 @@ export function OrganizationPanel() {
                     <option value="admin">Admin</option>
                   </select>
                 </div>
-                <Button onClick={inviteMember} disabled={!inviteEmail.trim() || inviting} size="sm">
+                <Button
+                  onClick={inviteMember}
+                  disabled={!inviteEmail.trim() || inviting}
+                  size="sm"
+                  className="bg-foreground text-background hover:bg-foreground/90"
+                >
                   {inviting ? "Sending…" : "Send invite"}
                 </Button>
               </div>
@@ -361,6 +396,7 @@ export function OrganizationPanel() {
                       size="xs"
                       disabled={busyInvitation === invite.id}
                       onClick={() => answerInvitation(invite.id, true)}
+                      className="bg-foreground text-background hover:bg-foreground/90"
                     >
                       <Check /> Join
                     </Button>
@@ -387,12 +423,7 @@ export function OrganizationPanel() {
 
           {activeOrg && (
             <section className="flex flex-col gap-2 border-t border-border pt-3">
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={leaveOrganization}
-                disabled={leaving}
-              >
+              <Button variant="outline" size="sm" onClick={leaveOrganization} disabled={leaving}>
                 <LogOut />
                 {leaving
                   ? "Leaving…"
