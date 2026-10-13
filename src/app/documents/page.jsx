@@ -35,7 +35,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { SidebarTrigger } from "@/components/ui/sidebar";
 import {
   createLocalDocument,
   deleteLocalDocument,
@@ -45,6 +44,9 @@ import {
 import { TEMPLATES } from "@/components/documents/templates";
 import { TemplateThumbnail } from "@/components/documents/template-thumbnail";
 import { AccountMenu } from "@/components/auth/account-menu";
+import { OrganizationPanel } from "@/components/auth/organization-panel";
+import { WORKSPACE_CHANGED_EVENT, WorkspaceSwitcher } from "@/components/auth/workspace-switcher";
+import { authClient } from "@/lib/auth/client";
 import { FILE_ACCEPT, SUPPORTED_LABEL, parseFileToDocument } from "@/lib/file-open";
 function formatDate(value) {
   if (!value) return "—";
@@ -70,6 +72,11 @@ export default function DocumentsPage() {
   const fileRef = useRef(null);
   const [query, setQuery] = useState("");
   const [copiedId, setCopiedId] = useState(null);
+  const { data: session } = authClient.useSession();
+  const user = session?.user ?? null;
+  const { data: activeOrganization } = authClient.useActiveOrganization();
+  const activeOrg = activeOrganization ?? null;
+  const activeOrgId = activeOrg?.id ?? null;
   // Typing stays instant, table filters on the deferred value so each
   // keystroke does not re-render all rows synchronously.
   const deferredQuery = useDeferredValue(query);
@@ -91,8 +98,15 @@ export default function DocumentsPage() {
   };
   useEffect(() => {
     void refresh();
+    const onWorkspaceChanged = () => {
+      void refresh();
+    };
+    window.addEventListener(WORKSPACE_CHANGED_EVENT, onWorkspaceChanged);
+    return () => {
+      window.removeEventListener(WORKSPACE_CHANGED_EVENT, onWorkspaceChanged);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [activeOrgId]);
   const filtered = useMemo(() => {
     const q = deferredQuery.trim().toLowerCase();
     if (!q) return docs;
@@ -187,7 +201,8 @@ export default function DocumentsPage() {
     URL.revokeObjectURL(url);
   };
   // Share = copy the document link. Anyone opening it still needs
-  // access to this workspace; real multi-user sharing is not built yet.
+  // access to this workspace: personal links work only for the creator,
+  // organization links work for every member of the active organization.
   const shareDoc = async (doc) => {
     const url = `${window.location.origin}/documents/${doc.id}`;
     try {
@@ -203,22 +218,33 @@ export default function DocumentsPage() {
   };
   return (
     <div className="flex min-h-screen w-full flex-col gap-6 px-4 py-4 sm:px-6">
-      <div className="flex flex-wrap items-center gap-3">
-        <SidebarTrigger className="shrink-0" />
-        <h1 className="text-xl font-semibold">Documents</h1>
-        <div className="ml-auto flex items-center gap-2">
-          <div className="relative">
-            <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search documents"
-              className="w-52 pl-8"
-              aria-label="Search documents"
-            />
-          </div>
-          <AccountMenu />
+      <div className="flex items-center gap-2">
+        <Link
+          href={user ? "/documents" : "/"}
+          className="flex shrink-0 items-center gap-2 rounded-md font-semibold outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <span className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+            <FileText className="size-4" aria-hidden="true" />
+          </span>
+          <span className="hidden text-xl min-[420px]:inline">CollabDocs</span>
+        </Link>
+        <div className="relative min-w-0 flex-1 sm:max-w-xs">
+          <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search documents"
+            className="w-full pl-8"
+            aria-label="Search documents"
+          />
         </div>
+        <div className="ml-auto flex shrink-0 items-center gap-1 rounded-xl border border-border bg-card p-1">
+          <div className="w-32 sm:w-44">
+            <WorkspaceSwitcher />
+          </div>
+          <OrganizationPanel />
+        </div>
+        <AccountMenu />
       </div>
 
       <section aria-label="Template gallery" className="flex flex-col gap-3">
@@ -281,7 +307,11 @@ export default function DocumentsPage() {
           </div>
         ) : filtered.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            {query ? "No matches." : "No documents yet — pick a template or open a file above."}
+            {query
+              ? "No matches."
+              : activeOrg
+                ? `No documents in ${activeOrg.name} yet — pick a template or open a file above.`
+                : "No documents yet — pick a template or open a file above."}
           </p>
         ) : (
           <div className="overflow-hidden rounded-lg border bg-card">
@@ -311,7 +341,11 @@ export default function DocumentsPage() {
                       </Link>
                     </TableCell>
                     <TableCell className="whitespace-nowrap text-muted-foreground">
-                      Only you
+                      {d.orgId
+                        ? activeOrg && d.orgId === activeOrg.id
+                          ? activeOrg.name
+                          : "Organization"
+                        : "Only you"}
                     </TableCell>
                     <TableCell className="whitespace-nowrap text-muted-foreground">
                       {formatDate(d.createdAt)}

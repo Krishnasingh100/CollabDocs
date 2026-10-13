@@ -1,9 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Check, CloudOff, Loader2 } from "lucide-react";
+import { Check, CloudOff, FileText, Loader2 } from "lucide-react";
+import Link from "next/link";
 import { Separator } from "@/components/ui/separator";
-import { SidebarTrigger } from "@/components/ui/sidebar";
 import { getLocalDocument, saveLocalDocument } from "@/lib/documents";
 import { cn } from "@/lib/utils";
 import { EditorToolbar } from "./editor-toolbar";
@@ -77,8 +77,7 @@ function ensureCaretVisible(ed) {
     } else if (c.top < topMargin) {
       window.scrollBy({ top: c.top - topMargin - 10 });
     }
-  } catch {
-  }
+  } catch {}
 }
 
 function ensureFocusedCaretVisible(editorsRef) {
@@ -89,8 +88,7 @@ function ensureFocusedCaretVisible(editorsRef) {
         break;
       }
     }
-  } catch {
-  }
+  } catch {}
 }
 
 function atDocStart(ed) {
@@ -911,8 +909,7 @@ export function DocumentEditor({ documentId }) {
           }
           if (inset != null) setBorderInset(Math.min(Math.max(0, Math.round(inset)), 48));
         }
-      } catch {
-      }
+      } catch {}
     }, 0);
     return () => clearTimeout(t);
   }, [documentId]);
@@ -923,8 +920,7 @@ export function DocumentEditor({ documentId }) {
       setBorderInset(v);
       try {
         localStorage.setItem(`collabdocs:border:${documentId}`, JSON.stringify({ inset: v }));
-      } catch {
-      }
+      } catch {}
     },
     [documentId],
   );
@@ -1069,7 +1065,14 @@ export function DocumentEditor({ documentId }) {
       {/* Slim header: toggle + title + save state, one line */}
       <header className="sticky top-0 z-40 border-b border-[#dadce0] bg-white">
         <div className="flex h-12 items-center gap-2 px-3">
-          <SidebarTrigger className="shrink-0" />
+          <Link
+            href="/documents"
+            title="All documents"
+            aria-label="All documents"
+            className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground outline-none transition hover:bg-primary/80 focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <FileText className="size-4" />
+          </Link>
           <Separator orientation="vertical" className="h-6 shrink-0" />
           <input
             ref={titleRef}

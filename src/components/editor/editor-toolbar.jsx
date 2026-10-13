@@ -265,6 +265,7 @@ export function EditorToolbar({ editor, title, getExportData, borderInset, onBor
             <div className="grid gap-1">
               {[
                 { label: "PDF document (.pdf)", format: "pdf" },
+                { label: "Word document (.docx)", format: "docx" },
                 { label: "Web page (.html)", format: "html" },
                 { label: "Plain text (.txt)", format: "txt" },
                 { label: "JSON (.json)", format: "json" },

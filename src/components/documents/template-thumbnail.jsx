@@ -115,8 +115,27 @@ function PreviewBody({ template }) {
   }
 }
 export function TemplateThumbnail({ template, priority = false }) {
-  // Blank template: the + icon fills the whole page.
+  // Blank template: the artwork fills the whole tile when set,
+  // otherwise the + icon fills the whole page.
   if (template.preview === "blank") {
+    if (template.banner) {
+      return (
+        <span
+          aria-hidden="true"
+          className="relative aspect-[3/4] overflow-hidden rounded-lg border border-border bg-white shadow-sm transition group-hover:border-primary group-hover:shadow-md"
+        >
+          <Image
+            src={template.banner}
+            alt=""
+            fill
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 30vw, 180px"
+            className="object-cover"
+            priority={priority}
+            loading={priority ? "eager" : "lazy"}
+          />
+        </span>
+      );
+    }
     return (
       <span
         aria-hidden="true"

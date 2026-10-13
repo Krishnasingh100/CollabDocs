@@ -1,25 +1,32 @@
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 import { db } from "@/db";
 import { documentsTable } from "@/db/schema";
-import { resolveOwner } from "@/lib/auth/require-user";
+import { resolveWorkspace } from "@/lib/auth/require-user";
 function toSummary(row) {
   return {
     id: row.id,
     title: row.title ?? "Untitled document",
     plainText: row.plainText ?? "",
     templateId: row.templateId ?? null,
+    orgId: row.orgId ?? null,
     updatedAt: row.updatedAt instanceof Date ? row.updatedAt.toISOString() : String(row.updatedAt),
     createdAt: row.createdAt instanceof Date ? row.createdAt.toISOString() : String(row.createdAt),
   };
 }
+// Lists documents in the caller's active workspace: the active organization
+// when one is selected, otherwise the caller's personal documents.
 export async function GET() {
-  const owner = await resolveOwner();
-  if (!owner) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  const workspace = await resolveWorkspace();
+  if (!workspace) return Response.json({ error: "Unauthorized" }, { status: 401 });
   try {
+    const condition =
+      workspace.kind === "organization"
+        ? eq(documentsTable.orgId, workspace.organizationId)
+        : and(eq(documentsTable.userId, workspace.ownerId), isNull(documentsTable.orgId));
     const rows = await db
       .select()
       .from(documentsTable)
-      .where(eq(documentsTable.userId, owner.ownerId))
+      .where(condition)
       .orderBy(desc(documentsTable.updatedAt))
       .limit(100);
     return Response.json({ documents: rows.map(toSummary) });
@@ -29,14 +36,16 @@ export async function GET() {
   }
 }
 export async function POST(req) {
-  const owner = await resolveOwner();
-  if (!owner) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  const workspace = await resolveWorkspace();
+  if (!workspace) return Response.json({ error: "Unauthorized" }, { status: 401 });
   try {
     const body = await req.json().catch(() => ({}));
+    const creatorId = workspace.kind === "organization" ? workspace.userId : workspace.ownerId;
     const [row] = await db
       .insert(documentsTable)
       .values({
-        userId: owner.ownerId,
+        userId: creatorId,
+        orgId: workspace.kind === "organization" ? workspace.organizationId : null,
         templateId: body.templateId?.slice(0, 64) || null,
         title: body.title?.slice(0, 255) || "Untitled document",
         content: body.content ?? null,

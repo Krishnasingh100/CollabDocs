@@ -42,6 +42,29 @@ export function downloadData(data, title, format) {
     window.print();
     return;
   }
+  if (format === "docx") {
+    void (async () => {
+      try {
+        const { default: HtmlToDocx } = await import("@turbodocx/html-to-docx");
+        const blob = await HtmlToDocx(
+          `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>${data.html}</body></html>`,
+          null,
+          { title: safeTitle },
+        );
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${name}.docx`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      } catch {
+        // conversion failed, page stays as-is
+      }
+    })();
+    return;
+  }
   let content;
   let mime;
   let ext;

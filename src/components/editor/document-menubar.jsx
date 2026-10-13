@@ -132,6 +132,7 @@ export function DocumentMenubar({
               <MenubarSubTrigger disabled={!editor}>Download</MenubarSubTrigger>
               <MenubarSubContent>
                 <MenubarItem onClick={() => doDownload("pdf")}>PDF document (.pdf)</MenubarItem>
+                <MenubarItem onClick={() => doDownload("docx")}>Word document (.docx)</MenubarItem>
                 <MenubarItem onClick={() => doDownload("html")}>Web page (.html)</MenubarItem>
                 <MenubarItem onClick={() => doDownload("txt")}>Plain text (.txt)</MenubarItem>
                 <MenubarItem onClick={() => doDownload("json")}>JSON (.json)</MenubarItem>
