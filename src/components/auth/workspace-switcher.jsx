@@ -51,6 +51,12 @@ function extractError(result, fallback) {
   return fallback;
 }
 
+// Takes a create/list result; returns the organization payload or null.
+function readOrg(result) {
+  if (!result) return null;
+  return result?.data ?? null;
+}
+
 // Takes optional menu side, switches personal and org workspaces. Returns switcher UI.
 // Sets active org in session cookie so documents API scopes correctly.
 export function WorkspaceSwitcher({ menuSide = "bottom" }) {
@@ -66,11 +72,11 @@ export function WorkspaceSwitcher({ menuSide = "bottom" }) {
   const [logo, setLogo] = useState("");
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState(null);
+  const [switchError, setSwitchError] = useState(null);
 
   const user = session?.user ?? null;
   const orgs = Array.isArray(organizations) ? organizations : [];
   const activeOrg = activeOrganization ?? null;
-  const memberCount = Array.isArray(activeOrg?.members) ? activeOrg.members.length : null;
 
   // Signed out (local workspace): no switching available.
   if (!user) {
@@ -79,8 +85,9 @@ export function WorkspaceSwitcher({ menuSide = "bottom" }) {
         <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
           <UserRound className="size-4" />
         </span>
-        <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
-          Personal workspace
+        <span className="flex min-w-0 flex-1 flex-col">
+          <span className="truncate text-xs font-medium text-foreground">Personal</span>
+          <span className="truncate text-[11px] text-muted-foreground">Local workspace</span>
         </span>
       </div>
     );
@@ -88,13 +95,22 @@ export function WorkspaceSwitcher({ menuSide = "bottom" }) {
 
   const switchWorkspace = async (organizationId) => {
     setSwitching(true);
+    setSwitchError(null);
     try {
-      await authClient.organization.setActive({ organizationId });
+      const result = await authClient.organization.setActive({ organizationId });
+      const failure = extractError(result, "Could not switch workspace.");
+      if (failure) {
+        setSwitchError(failure);
+        return;
+      }
+    } catch (error) {
+      setSwitchError(error instanceof Error ? error.message : "Could not switch workspace.");
+      return;
     } finally {
       setSwitching(false);
-      notifyWorkspaceChanged();
-      router.refresh();
     }
+    notifyWorkspaceChanged();
+    router.refresh();
   };
 
   const openCreate = () => {
@@ -124,6 +140,17 @@ export function WorkspaceSwitcher({ menuSide = "bottom" }) {
         setCreateError(failure);
         return;
       }
+      // Enters the new workspace at once; otherwise documents keep saving
+      // to personal until the user switches by hand.
+      const created = readOrg(result);
+      const createdId = created?.id ?? null;
+      if (createdId) {
+        try {
+          await authClient.organization.setActive({ organizationId: createdId });
+        } catch {
+          // Created already; workspace refresh picks up membership.
+        }
+      }
       setCreateOpen(false);
       notifyWorkspaceChanged();
       router.refresh();
@@ -147,14 +174,10 @@ export function WorkspaceSwitcher({ menuSide = "bottom" }) {
           </span>
           <span className="flex min-w-0 flex-1 flex-col">
             <span className="truncate text-xs font-medium text-foreground">
-              {activeOrg ? activeOrg.name : "Personal"}
+              {activeOrg ? "Organization" : "Personal"}
             </span>
             <span className="truncate text-[11px] text-muted-foreground">
-              {activeOrg
-                ? memberCount == null
-                  ? "Organization"
-                  : `${memberCount} ${memberCount === 1 ? "member" : "members"}`
-                : "Only you"}
+              {activeOrg ? activeOrg.name : (user.email ?? "Only you")}
             </span>
           </span>
           <ChevronsUpDown className="size-3.5 shrink-0 text-muted-foreground" />
@@ -190,6 +213,11 @@ export function WorkspaceSwitcher({ menuSide = "bottom" }) {
               <span>Create organization</span>
             </DropdownMenuItem>
           </DropdownMenuGroup>
+          {switchError && (
+            <p role="alert" className="px-2 py-1.5 text-xs text-destructive">
+              {switchError}
+            </p>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
 

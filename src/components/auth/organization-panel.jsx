@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Loader2, LogOut, Mail, UserPlus, Users, X } from "lucide-react";
 import { authClient } from "@/lib/auth/client";
@@ -84,6 +84,27 @@ export function OrganizationPanel() {
     }
   };
 
+  // Loads pending invitations on mount so the Invites entry appears even in
+  // the personal workspace. Without this the dialog stays unreachable.
+  // States update only in the fetch continuation, never synchronously.
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const result = await authClient.organization.listUserInvitations();
+        if (cancelled) return;
+        const data = readData(result);
+        setInbox(Array.isArray(data) ? data : []);
+      } catch {
+        if (!cancelled) setInbox([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
   if (!user) return null;
 
   const afterWorkspaceChange = () => {
@@ -142,6 +163,17 @@ export function OrganizationPanel() {
       }
       await refreshInbox();
       if (accept) {
+        // Lands in the joined workspace at once; otherwise the user stays
+        // personal and sees none of the new shared documents.
+        const invite = inbox.find((item) => item.id === invitationId);
+        const joinedOrgId = invite?.organizationId ?? invite?.organization?.id ?? null;
+        if (joinedOrgId) {
+          try {
+            await authClient.organization.setActive({ organizationId: joinedOrgId });
+          } catch {
+            // Still joined; workspace refresh picks up membership.
+          }
+        }
         setOpen(false);
         afterWorkspaceChange();
       }
@@ -166,6 +198,13 @@ export function OrganizationPanel() {
       if (failure) {
         setActionError(failure);
         return;
+      }
+      // Drops back to personal; otherwise later calls still scope to the
+      // departed organization and list nothing.
+      try {
+        await authClient.organization.setActive({ organizationId: null });
+      } catch {
+        // Left already; workspace refresh converges on personal scope.
       }
       setOpen(false);
       setLeaveArmed(false);
