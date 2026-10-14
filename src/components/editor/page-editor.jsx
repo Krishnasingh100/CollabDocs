@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect } from "react";
+import { memo, useCallback, useEffect } from "react";
 import { Extension } from "@tiptap/core";
 import { EditorContent, useEditor } from "@tiptap/react";
 import { getEditorExtensions } from "./extensions";
@@ -25,7 +25,8 @@ function pageFlowExtension(pageIndex, apiRef) {
 }
 
 // Takes page index plus callbacks; hosts one fixed sheet editor; renders editable page.
-export function PageEditor({
+// Memoized: one page's keystrokes never re-render sibling sheets (fast typing).
+export const PageEditor = memo(function PageEditor({
   pageIndex,
   initialContent,
   apiRef,
@@ -64,4 +65,4 @@ export function PageEditor({
       <EditorContent editor={editor} className="docs-page-wrap" />
     </div>
   );
-}
+});
