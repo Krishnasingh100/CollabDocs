@@ -21,6 +21,7 @@ let ClientSuspense = null;
 let useOthersHook = null;
 let useMyPresenceHook = null;
 let useStatusHook = null;
+let useThreadsHook = null;
 if (liveblocksEnabled) {
   // Singleton client: authEndpoint mints a per-document token (see
   // /api/liveblocks-auth), resolveUsers gives every connection a display
@@ -44,6 +45,10 @@ if (liveblocksEnabled) {
         return userIds.map(() => ({}));
       }
     },
+    resolveMentionSuggestions: async () => {
+      // No org directory yet: mentions disabled, composer still works.
+      return [];
+    },
   });
   const room = createRoomContext(client);
   RoomProvider = room.RoomProvider;
@@ -51,6 +56,7 @@ if (liveblocksEnabled) {
   useOthersHook = room.useOthers;
   useMyPresenceHook = room.useMyPresence;
   useStatusHook = room.useStatus;
+  useThreadsHook = room.useThreads;
 } else if (typeof window !== "undefined") {
   console.warn(
     "[liveblocks] Disabled: set NEXT_PUBLIC_LIVEBLOCKS_PUBLIC_KEY to a pk_ key. Presence stays off; editing works.",
@@ -194,7 +200,9 @@ function PresenceAvatarsInner() {
       >
         <span
           className={
-            status === "connected" ? "size-2 rounded-full bg-emerald-500" : "size-2 rounded-full bg-amber-500"
+            status === "connected"
+              ? "size-2 rounded-full bg-emerald-500"
+              : "size-2 rounded-full bg-amber-500"
           }
         />
         <span className="hidden sm:inline">Live</span>
@@ -232,4 +240,15 @@ function PresenceAvatarsInner() {
 export function PresenceAvatars() {
   if (!useOthersHook) return null;
   return <PresenceAvatarsInner />;
+}
+
+// No input; reports whether Liveblocks presence/comments are active. Returns bool.
+export function isLiveblocksEnabled() {
+  return liveblocksEnabled;
+}
+
+// Raw room threads hook. Call only inside <LiveDocRoom> when enabled.
+// Split outer (gates on isLiveblocksEnabled) / inner (calls hook) keeps hooks unconditional.
+export function useLiveThreads(options) {
+  return useThreadsHook(options);
 }

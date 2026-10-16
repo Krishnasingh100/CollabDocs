@@ -12,6 +12,7 @@ import { DocumentMenubar } from "./document-menubar";
 import { AccountMenu } from "@/components/auth/account-menu";
 import { PageEditor } from "./page-editor";
 import { PresenceAvatars } from "./live-room";
+import { CommentsButton, CommentsPanel } from "./comments-panel";
 import { buildSettleSignature, isSettleCycle, serializeDocJsonToHtml } from "./document-styles";
 import "./editor.css";
 
@@ -262,6 +263,7 @@ export function DocumentEditor({ documentId }) {
   const [margins, setMargins] = useState({ left: DEFAULT_MARGIN, right: DEFAULT_MARGIN });
   const [borderInset, setBorderInset] = useState(0);
   const [initialPages, setInitialPages] = useState([[]]);
+  const [commentsOpen, setCommentsOpen] = useState(false);
 
   const editorsRef = useRef(new Map());
   const sheetsRef = useRef(new Map());
@@ -1150,6 +1152,7 @@ export function DocumentEditor({ documentId }) {
             )}
           </span>
           <span className="ml-auto flex shrink-0 items-center gap-2">
+            <CommentsButton open={commentsOpen} onToggle={() => setCommentsOpen((v) => !v)} />
             <PresenceAvatars />
             <AccountMenu />
           </span>
@@ -1236,6 +1239,8 @@ export function DocumentEditor({ documentId }) {
           </span>
         </div>
       </footer>
+
+      <CommentsPanel open={commentsOpen} onClose={() => setCommentsOpen(false)} />
     </div>
   );
 }
