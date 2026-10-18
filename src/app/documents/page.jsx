@@ -49,12 +49,19 @@ import { OrganizationPanel } from "@/components/auth/organization-panel";
 import { WORKSPACE_CHANGED_EVENT, WorkspaceSwitcher } from "@/components/auth/workspace-switcher";
 import { authClient } from "@/lib/auth/client";
 import { FILE_ACCEPT, SUPPORTED_LABEL, parseFileToDocument } from "@/lib/file-open";
-import {
-  NotificationBell,
-  dashRoomIdFor,
-  sendOrgNotification,
-} from "@/components/notifications/notification-bell";
-import { InboxRoomProvider } from "@/components/editor/live-room";
+import { dashRoomIdFor, sendOrgNotification } from "@/lib/org-notifications";
+import nextDynamic from "next/dynamic";
+// Liveblocks (bell + its inbox room) is an organization-only feature, loaded
+// lazily on top: personal workspaces never fetch the Liveblocks bundle, and
+// org dashboards render content immediately while the bell chunk arrives.
+const NotificationBell = nextDynamic(
+  () => import("@/components/notifications/notification-bell").then((m) => m.NotificationBell),
+  { ssr: false, loading: () => null },
+);
+const InboxRoomProvider = nextDynamic(
+  () => import("@/components/editor/live-room").then((m) => m.InboxRoomProvider),
+  { ssr: false, loading: () => null },
+);
 function formatDate(value) {
   if (!value) return "—";
   const d = new Date(value);
@@ -280,7 +287,6 @@ export default function DocumentsPage() {
   if (!user) return null;
 
   return (
-    <InboxRoomProvider roomId={orgWorkspace ? dashRoomIdFor(user.id) : null}>
       <div className="flex min-h-screen w-full flex-col gap-6 px-4 py-4 sm:px-6">
         <div className="flex items-center gap-2">
           <Link
@@ -298,7 +304,11 @@ export default function DocumentsPage() {
             </div>
             <OrganizationPanel />
           </div>
-          {orgWorkspace && <NotificationBell />}
+          {orgWorkspace && (
+            <InboxRoomProvider roomId={dashRoomIdFor(user.id)}>
+              <NotificationBell />
+            </InboxRoomProvider>
+          )}
           <AccountMenu />
         </div>
 
@@ -504,6 +514,5 @@ export default function DocumentsPage() {
           )}
         </section>
       </div>
-    </InboxRoomProvider>
   );
 }

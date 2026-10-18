@@ -110,13 +110,21 @@ export function WorkspaceSwitcher({ menuSide = "bottom" }) {
   const [createError, setCreateError] = useState(null);
   const [logoError, setLogoError] = useState(null);
   const [switchError, setSwitchError] = useState(null);
+  // Optimistic target for the in-flight switch: undefined = idle, null =
+  // personal, string = org id. Lets the label render the chosen workspace's
+  // name right away instead of waiting for the session store round trip.
+  const [pendingOrgId, setPendingOrgId] = useState(undefined);
 
   const user = session?.user ?? null;
   const orgs = Array.isArray(organizations) ? organizations : [];
   // The session store is the source of truth for the active workspace id —
   // the org-details hook caches separately and can lag behind a switch.
-  const activeOrgId = session?.session?.activeOrganizationId ?? null;
+  const sessionOrgId = session?.session?.activeOrganizationId ?? null;
+  const activeOrgId = pendingOrgId !== undefined ? pendingOrgId : sessionOrgId;
   const activeOrg = orgs.find((org) => org.id === activeOrgId) ?? null;
+  // True while an organization is selected, even if its list entry has not
+  // arrived yet: the label must never fall back to "Personal" in that window.
+  const inOrg = Boolean(activeOrgId);
 
   // Signed out (local workspace): no switching available.
   if (!user) {
@@ -134,17 +142,23 @@ export function WorkspaceSwitcher({ menuSide = "bottom" }) {
   }
 
   const switchWorkspace = async (organizationId) => {
+    if (switching) return;
     setSwitching(true);
     setSwitchError(null);
+    // Show the target workspace's name immediately; cleared below once the
+    // session store confirms, or reverted if the switch itself fails.
+    setPendingOrgId(organizationId);
     try {
       const result = await authClient.organization.setActive({ organizationId });
       const failure = extractError(result, "Could not switch workspace.");
       if (failure) {
         setSwitchError(failure);
+        setPendingOrgId(undefined);
         return;
       }
     } catch (error) {
       setSwitchError(error instanceof Error ? error.message : "Could not switch workspace.");
+      setPendingOrgId(undefined);
       return;
     } finally {
       setSwitching(false);
@@ -153,8 +167,10 @@ export function WorkspaceSwitcher({ menuSide = "bottom" }) {
     // switch together. Router refresh alone leaves client hooks stale.
     try {
       await refetchSession();
+      setPendingOrgId(undefined);
     } catch {
-      // Store refresh is best-effort; server scope already switched.
+      // Store refresh is best-effort; keep the optimistic label until the
+      // next session refresh so the name stays correct.
     }
     notifyWorkspaceChanged();
     router.refresh();
@@ -211,6 +227,7 @@ export function WorkspaceSwitcher({ menuSide = "bottom" }) {
       const created = readOrg(result);
       const createdId = created?.id ?? null;
       if (createdId) {
+        setPendingOrgId(createdId);
         try {
           await authClient.organization.setActive({ organizationId: createdId });
         } catch {
@@ -219,6 +236,7 @@ export function WorkspaceSwitcher({ menuSide = "bottom" }) {
       }
       try {
         await refetchSession();
+        setPendingOrgId(undefined);
       } catch {
         // Store refresh is best-effort; server scope already switched.
       }
@@ -249,10 +267,14 @@ export function WorkspaceSwitcher({ menuSide = "bottom" }) {
           )}
           <span className="flex min-w-0 flex-1 flex-col">
             <span className="truncate text-xs font-medium text-foreground">
-              {activeOrg ? "Organization" : "Personal"}
+              {inOrg ? "Organization" : "Personal"}
             </span>
             <span className="truncate text-[11px] text-muted-foreground">
-              {activeOrg ? activeOrg.name : (user.email ?? "Only you")}
+              {switching
+                ? "Switching…"
+                : inOrg
+                  ? (activeOrg?.name ?? "Loading…")
+                  : (user.email ?? "Only you")}
             </span>
           </span>
           <ChevronsUpDown className="size-3.5 shrink-0 text-muted-foreground" />
@@ -260,7 +282,7 @@ export function WorkspaceSwitcher({ menuSide = "bottom" }) {
         <DropdownMenuContent align="end" side={menuSide} className="w-64">
           <DropdownMenuGroup>
             <DropdownMenuLabel>Workspaces</DropdownMenuLabel>
-            <DropdownMenuItem onClick={() => switchWorkspace(null)}>
+            <DropdownMenuItem onClick={() => switchWorkspace(null)} disabled={switching}>
               <UserRound />
               <span className="min-w-0 flex-1">
                 <span className="block truncate">Personal</span>
@@ -268,16 +290,20 @@ export function WorkspaceSwitcher({ menuSide = "bottom" }) {
                   {user.email ?? "Only you"}
                 </span>
               </span>
-              {!activeOrg && <Check className="size-4 text-primary" />}
+              {!inOrg && <Check className="size-4 text-primary" />}
             </DropdownMenuItem>
             {orgs.map((org) => (
-              <DropdownMenuItem key={org.id} onClick={() => switchWorkspace(org.id)}>
+              <DropdownMenuItem
+                key={org.id}
+                onClick={() => switchWorkspace(org.id)}
+                disabled={switching}
+              >
                 <OrgIcon logo={org.logo} name={org.name} />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate">{org.name}</span>
                   <span className="block truncate text-xs text-muted-foreground">{org.slug}</span>
                 </span>
-                {activeOrg?.id === org.id && <Check className="size-4 text-primary" />}
+                {activeOrgId === org.id && <Check className="size-4 text-primary" />}
               </DropdownMenuItem>
             ))}
           </DropdownMenuGroup>

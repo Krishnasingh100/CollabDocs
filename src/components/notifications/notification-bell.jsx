@@ -13,32 +13,9 @@ import {
   useUnreadInboxNotificationsCount,
 } from "@/components/editor/live-room";
 
-// Room ids keep alphanumeric plus -/_; anything else collapses to a dash so
-// the browser room id and the server-side auth check stay identical.
-export function dashRoomIdFor(userId) {
-  const stem = String(userId ?? "")
-    .replace(/[^a-zA-Z0-9_-]/g, "-")
-    .slice(0, 60);
-  return stem ? `dash-${stem}` : "";
-}
-
-// Server endpoint name reused for org events, kept in one place.
-export const ORG_NOTIFY_ENDPOINT = "/api/notifications/org";
-
-// Takes org id, kind, actor info, and targets; posts one org notification.
-// Best-effort: callers fire and forget; failures never break the action.
-export async function sendOrgNotification(payload) {
-  if (!isLiveblocksEnabled()) return;
-  try {
-    await fetch(ORG_NOTIFY_ENDPOINT, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-  } catch {
-    // Notifications are best-effort; the action itself already succeeded.
-  }
-}
+// Room id and the org-notify sender live in a Liveblocks-free module so
+// personal pages can import them without pulling the Liveblocks bundle.
+export { dashRoomIdFor, sendOrgNotification } from "@/lib/org-notifications";
 
 // Renders one "$orgDocumentCreated" notification with a doc link.
 // Reads the document id from activity data so the click never needs room access.

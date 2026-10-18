@@ -5,7 +5,7 @@ import Image from "next/image";
 import { Check, Loader2, LogOut, Mail, UserPlus, Users, X } from "lucide-react";
 import { authClient } from "@/lib/auth/client";
 import { notifyWorkspaceChanged } from "@/components/auth/workspace-switcher";
-import { sendOrgNotification } from "@/components/notifications/notification-bell";
+import { sendOrgNotification } from "@/lib/org-notifications";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -58,7 +58,19 @@ export function OrganizationPanel() {
   const [busyInvitation, setBusyInvitation] = useState(null);
 
   const user = session?.user ?? null;
-  const activeOrg = activeOrganization ?? null;
+  const { data: organizations } = authClient.useListOrganizations();
+  const orgs = Array.isArray(organizations) ? organizations : [];
+  // Same source-of-truth rule as the workspace switcher: the session's active
+  // id decides which workspace we are in, and the org-details hook is trusted
+  // only when it matches — otherwise the label renders from the orgs list.
+  // This keeps the org name (and members dialog) correct right after a
+  // switch instead of showing the lagging previous workspace.
+  const activeOrgId = session?.session?.activeOrganizationId ?? null;
+  const activeOrg = activeOrgId
+    ? (activeOrganization?.id === activeOrgId
+        ? activeOrganization
+        : (orgs.find((org) => org.id === activeOrgId) ?? null))
+    : null;
   const members = Array.isArray(activeOrg?.members) ? activeOrg.members : [];
   const sentInvites = Array.isArray(activeOrg?.invitations) ? activeOrg.invitations : [];
 

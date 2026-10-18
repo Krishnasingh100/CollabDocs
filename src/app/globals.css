@@ -131,10 +131,13 @@ html {
   --sidebar-ring: oklch(0.708 0 0);
 }
 
-/* Third-party branding never shows in the product UI. The composer
-   attribution is already disabled by prop; this hides it everywhere. */
-.lb-composer-attribution {
-  display: none;
+/* Third-party branding never shows in the product UI: the composer
+   attribution is disabled by prop, and this hides any logo or
+   "Powered by Liveblocks" link that the widgets may still render. */
+.lb-composer-attribution,
+.lb-composer-attribution-icon,
+a[href*="liveblocks.io"] {
+  display: none !important;
 }
 
 @layer base {
