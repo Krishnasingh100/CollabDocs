@@ -26,7 +26,7 @@ export function About() {
     <section
       id="about"
       aria-labelledby="about-heading"
-      className="border-t bg-accent/35 scroll-mt-16"
+      className="border-t bg-background scroll-mt-16"
     >
       <div className="mx-auto w-full max-w-5xl px-4 py-16">
         <p className="text-sm font-medium text-primary">ABOUT</p>

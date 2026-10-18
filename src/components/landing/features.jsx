@@ -32,7 +32,7 @@ export function Features() {
     <section
       id="features"
       aria-labelledby="features-heading"
-      className="border-y bg-secondary/50 scroll-mt-16"
+      className="border-y bg-background scroll-mt-16"
     >
       <div className="mx-auto w-full max-w-5xl px-4 py-16">
         <p className="text-sm font-medium text-primary">FEATURES</p>

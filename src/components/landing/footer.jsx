@@ -2,7 +2,7 @@ import Link from "next/link";
 // Takes no props, links landing sections. Returns footer UI.
 export function Footer() {
   return (
-    <footer className="border-t border-border/70 bg-secondary/40">
+    <footer className="border-t border-border/70 bg-background">
       <div className="mx-auto flex w-full max-w-5xl flex-col items-center justify-between gap-3 px-4 py-6 text-sm text-muted-foreground sm:flex-row">
         <p>CollabDocs. Personal docs now, teamwork next.</p>
         <div className="flex items-center gap-4">
