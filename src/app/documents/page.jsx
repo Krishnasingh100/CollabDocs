@@ -86,6 +86,10 @@ export default function DocumentsPage() {
   const { data: activeOrganization } = authClient.useActiveOrganization();
   const activeOrg = activeOrganization ?? null;
   const activeOrgId = activeOrg?.id ?? null;
+  // Liveblocks (inbox room, notification bell) is an organization feature:
+  // personal-only accounts never connect to a room, keeping the layers separate.
+  const { data: organizations } = authClient.useListOrganizations();
+  const hasOrganizations = Array.isArray(organizations) && organizations.length > 0;
   // Typing stays instant, table filters on the deferred value so each
   // keystroke does not re-render all rows synchronously.
   const deferredQuery = useDeferredValue(query);
@@ -261,7 +265,7 @@ export default function DocumentsPage() {
   if (!user) return null;
 
   return (
-    <InboxRoomProvider roomId={dashRoomIdFor(user.id)}>
+    <InboxRoomProvider roomId={hasOrganizations ? dashRoomIdFor(user.id) : null}>
       <div className="flex min-h-screen w-full flex-col gap-6 px-4 py-4 sm:px-6">
         <div className="flex items-center gap-2">
           <Link
@@ -279,7 +283,7 @@ export default function DocumentsPage() {
             </div>
             <OrganizationPanel />
           </div>
-          <NotificationBell />
+          {hasOrganizations && <NotificationBell />}
           <AccountMenu />
         </div>
 
@@ -309,15 +313,42 @@ export default function DocumentsPage() {
         <section aria-label="Template gallery" className="flex flex-col gap-3">
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="text-sm font-medium text-muted-foreground">Start a new document</h2>
-            <button
-              onClick={() => fileRef.current?.click()}
-              disabled={creating || opening}
-              title={`Open ${SUPPORTED_LABEL}, even Google Docs exports`}
-              className="ml-auto flex items-center gap-1.5 rounded-md border border-border bg-card px-2.5 py-1.5 text-sm font-medium outline-none transition hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
-            >
-              <FileUp className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-              {opening ? "Opening…" : "Open file"}
-            </button>
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                disabled={creating || opening}
+                title={`Open ${SUPPORTED_LABEL}, even Google Docs exports`}
+                className="ml-auto flex items-center gap-1.5 rounded-md border border-border bg-card px-2.5 py-1.5 text-sm font-medium outline-none transition hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
+              >
+                <FileUp className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                {opening ? "Opening…" : "Open"}
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuItem onClick={() => fileRef.current?.click()}>
+                  <FileUp />
+                  <span>Open from this device</span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => {
+                    const blank = TEMPLATES.find((t) => t.id === "blank");
+                    if (blank) void createFromTemplate(blank);
+                  }}
+                >
+                  <Plus />
+                  <span>New blank document</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => {
+                    document
+                      .querySelector('[aria-label="Template gallery"]')
+                      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+                  }}
+                >
+                  <FileText />
+                  <span>Pick from templates</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
           {openError && (
             <p role="alert" className="text-sm text-destructive">

@@ -19,6 +19,10 @@ export default function RootLayout({ children }) {
   return (
     <html
       lang="en"
+      // Browser extensions and WebViews sometimes stamp their own attributes
+      // onto <html>; telling React not to patch that one element removes the
+      // hydration mismatch warning without touching real content.
+      suppressHydrationWarning
       data-scroll-behavior="smooth"
       className={cn(
         "h-full scroll-smooth",
