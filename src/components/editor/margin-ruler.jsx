@@ -112,7 +112,7 @@ export function MarginRuler({ left, right, onChange }) {
       ref={trackRef}
       role="group"
       aria-label="Page margin ruler. Drag markers to change side margins."
-      className="relative hidden h-7 w-full overflow-hidden rounded-t-md border border-[#dadce0] border-b-0 bg-white select-none sm:block print:hidden"
+      className="relative hidden h-7 w-full overflow-hidden rounded-t-md border border-border border-b-0 bg-white select-none sm:block print:hidden"
     >
       <div
         className="absolute inset-y-0 left-0 bg-[#f1f3f4]"

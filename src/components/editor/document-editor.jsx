@@ -1199,8 +1199,8 @@ export function DocumentEditor({ documentId, orgId = null }) {
   );
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#f8f9fa]">
-      <header className="sticky top-0 z-40 border-b border-[#dadce0] bg-white">
+    <div className="flex min-h-screen flex-col bg-background">
+      <header className="sticky top-0 z-40 border-b border-border bg-white">
         <div className="flex h-12 items-center gap-2 px-3">
           <Link
             href="/documents"
@@ -1265,7 +1265,7 @@ export function DocumentEditor({ documentId, orgId = null }) {
 
       {/* Real separate sheets: page 1 fills to its limit, then overflow
           flows into a newly created page 2 below it — like Word. */}
-      <main className="flex flex-1 flex-col items-center bg-[#f8f9fa] px-4 py-6">
+      <main className="flex flex-1 flex-col items-center bg-background px-4 py-6">
         <div className="w-full max-w-[816px]">
           <MarginRuler left={margins.left} right={margins.right} onChange={setMargins} />
         </div>
@@ -1307,7 +1307,7 @@ export function DocumentEditor({ documentId, orgId = null }) {
         </p>
       </main>
 
-      <footer className="sticky bottom-0 z-30 border-t border-[#dadce0] bg-white">
+      <footer className="sticky bottom-0 z-30 border-t border-border bg-white">
         <div className="flex h-9 items-center gap-3 px-4 text-xs text-muted-foreground">
           <span>{wordCount} words</span>
           <Separator orientation="vertical" className="h-4" />

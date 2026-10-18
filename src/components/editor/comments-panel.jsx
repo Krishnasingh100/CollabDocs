@@ -28,7 +28,7 @@ function CommentsPanelInner({ onClose }) {
   return (
     <aside
       aria-label="Document comments"
-      className="fixed top-[104px] right-4 bottom-16 z-40 flex w-[min(360px,calc(100vw-2rem))] flex-col overflow-hidden rounded-xl border border-[#dadce0] bg-white shadow-xl"
+      className="fixed top-[104px] right-4 bottom-16 z-40 flex w-[min(360px,calc(100vw-2rem))] flex-col overflow-hidden rounded-xl border border-border bg-white shadow-xl"
     >
       <div className="flex items-center gap-2 border-b px-3 py-2">
         <MessageSquare className="size-4 text-muted-foreground" />
