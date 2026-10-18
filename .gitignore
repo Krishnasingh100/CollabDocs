@@ -43,3 +43,8 @@ explainredme.md
 # local-only agent instruction files (never push to GitHub)
 AGENTS.md
 CLAUDE.md
+
+# local-only docker files (never push to GitHub)
+Dockerfile
+docker-compose.yml
+.dockerignore
