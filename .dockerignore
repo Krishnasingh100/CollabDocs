@@ -1,0 +1,25 @@
+# build outputs & deps
+node_modules
+.next
+/out
+
+# git & local docs
+.git
+.gitignore
+README.md
+explainreadme.md
+explainredme.md
+AGENTS.md
+CLAUDE.md
+
+# secrets
+.env
+.env.*
+!.env.example
+
+# docker itself (unused inside the image context designs)
+Dockerfile
+docker-compose.yml
+
+# database history (migrate with drizzle-kit against the host, not the image)
+drizzle

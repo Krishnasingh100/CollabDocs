@@ -1,4 +1,4 @@
-import { and, desc, eq, isNull } from "drizzle-orm";
+import { and, desc, eq, ilike, isNotNull, isNull, or } from "drizzle-orm";
 import { db } from "@/db";
 import { documentsTable } from "@/db/schema";
 import { resolveWorkspace } from "@/lib/auth/require-user";
@@ -9,22 +9,53 @@ function toSummary(row) {
     plainText: row.plainText ?? "",
     templateId: row.templateId ?? null,
     orgId: row.orgId ?? null,
+    hasPublicLink: row.shareToken != null,
+    deletedAt: row.deletedAt ? (row.deletedAt instanceof Date ? row.deletedAt.toISOString() : String(row.deletedAt)) : null,
     updatedAt: row.updatedAt instanceof Date ? row.updatedAt.toISOString() : String(row.updatedAt),
     createdAt: row.createdAt instanceof Date ? row.createdAt.toISOString() : String(row.createdAt),
   };
 }
+// Workspace scope for listing: org docs shared to members, personal docs private.
+// Trash mode (trash=1) selects deleted rows instead of live ones.
+function listCondition(workspace, trash) {
+  const owner =
+    workspace.kind === "organization"
+      ? eq(documentsTable.orgId, workspace.organizationId)
+      : and(eq(documentsTable.userId, workspace.ownerId), isNull(documentsTable.orgId));
+  return and(owner, trash ? isNotNull(documentsTable.deletedAt) : isNull(documentsTable.deletedAt));
+}
 // GET lists documents in active workspace (org or personal). Requires auth, 401 when logged out.
+// Optional query params: q (title/plain text search), trash (deleted documents list).
 // Returns { documents: summaries } (500 with error message on DB failure).
-export async function GET() {
+export async function GET(req) {
+  const { searchParams } = new URL(req.url);
+  const q = (searchParams.get("q") ?? "").trim().slice(0, 120);
+  const trash = searchParams.get("trash") === "1";
   const workspace = await resolveWorkspace();
   if (!workspace) return Response.json({ error: "Unauthorized" }, { status: 401 });
   try {
-    const condition =
-      workspace.kind === "organization"
-        ? eq(documentsTable.orgId, workspace.organizationId)
-        : and(eq(documentsTable.userId, workspace.ownerId), isNull(documentsTable.orgId));
+    let condition = listCondition(workspace, trash);
+    if (q) {
+      const needle = `%${q}%`;
+      condition = and(
+        condition,
+        or(ilike(documentsTable.title, needle), ilike(documentsTable.plainText, needle)),
+      );
+    }
+    // Summary-only projection: the content blob (often large) stays in the
+    // database on list calls, so the dashboard loads in one light query.
     const rows = await db
-      .select()
+      .select({
+        id: documentsTable.id,
+        title: documentsTable.title,
+        plainText: documentsTable.plainText,
+        templateId: documentsTable.templateId,
+        orgId: documentsTable.orgId,
+        shareToken: documentsTable.shareToken,
+        deletedAt: documentsTable.deletedAt,
+        createdAt: documentsTable.createdAt,
+        updatedAt: documentsTable.updatedAt,
+      })
       .from(documentsTable)
       .where(condition)
       .orderBy(desc(documentsTable.updatedAt))

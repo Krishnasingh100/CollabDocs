@@ -1,7 +1,56 @@
 "use client";
-import { memo, useCallback, useEffect } from "react";
+import { memo, createContext, useCallback, useContext, useEffect } from "react";
 import { createClient } from "@liveblocks/client";
 import { createRoomContext } from "@liveblocks/react";
+import { getYjsProviderForRoom } from "@liveblocks/yjs";
+import { authClient } from "@/lib/auth/client";
+
+// --- Live Yjs collaboration -------------------------------------------------
+// One provider (and its Y.Doc) per document room; the Yjs content is persisted
+// inside the Liveblocks room itself, so every open editor sees live updates.
+// Providers are cached in this module so remounts reuse the connection; they
+// are disconnected (not destroyed) on unmount to keep the doc state warm.
+const yjsProviders = new Map();
+const LiveYjsContext = createContext(null);
+// Returns the room's collaboration context ({ ydoc, provider }) or null.
+// Must be called inside <LiveDocRoom> (or any room) when enabled.
+export function useLiveYjs() {
+  return useContext(LiveYjsContext);
+}
+// Host rendered inside the room: wires the Liveblocks yjs provider and pushes
+// the context to children once the room connection object exists.
+// The provider comes from the module cache keyed by room id, so deriving it
+// during render is idempotent (StrictMode double-render dedupes).
+function LiveYjsHost({ children }) {
+  const room = useRoomHook();
+  let value = null;
+  if (room) {
+    let provider = yjsProviders.get(room.id) ?? null;
+    if (!provider) {
+      try {
+        provider = getYjsProviderForRoom(room);
+        yjsProviders.set(room.id, provider);
+      } catch {
+        provider = null;
+      }
+    }
+    if (provider) value = { ydoc: provider.getYDoc(), provider };
+  }
+  // Cleanup echo: disconnect the room socket when the room unmounts; the
+  // cached provider stays reusable for a later remount.
+  useEffect(() => {
+    if (!room) return;
+    const provider = yjsProviders.get(room.id) ?? null;
+    return () => {
+      try {
+        provider?.disconnect();
+      } catch {
+        // socket already closing
+      }
+    };
+  }, [room]);
+  return <LiveYjsContext.Provider value={value}>{children}</LiveYjsContext.Provider>;
+}
 
 // Sanitizes the public key: trims whitespace plus pasted quotes. Returns clean text.
 function cleanKey(value) {
@@ -18,17 +67,57 @@ const liveblocksEnabled = publicApiKey.startsWith("pk_");
 
 let RoomProvider = null;
 let ClientSuspense = null;
+let useRoomHook = null;
 let useOthersHook = null;
 let useMyPresenceHook = null;
 let useStatusHook = null;
 let useThreadsHook = null;
+let useInboxNotificationsHook = null;
+let useUnreadInboxNotificationsCountHook = null;
+let useMarkAllInboxNotificationsAsReadHook = null;
 if (liveblocksEnabled) {
+  // @mention autocomplete: lists the active organization's members, cached for
+  // 60 s so keystrokes do not re-fetch the org directory. Personal workspaces
+  // have no directory and resolve nothing. Only ids are returned; display
+  // names/avatars come from resolveUsers.
+  let mentionCache = { at: 0, people: [] };
+  async function loadMentionPeople() {
+    const now = Date.now();
+    if (now - mentionCache.at < 60_000 && mentionCache.people) return mentionCache.people;
+    const [{ data: session }, { data: org }] = await Promise.all([
+      authClient.getSession(),
+      authClient.organization.getFullOrganization(),
+    ]);
+    const selfId = String(session?.user?.id ?? "");
+    const members = Array.isArray(org?.members) ? org.members : [];
+    const people = members
+      .map((m) => ({
+        id: String(m?.userId ?? m?.user?.id ?? ""),
+        label: `${m?.user?.name ?? m?.name ?? ""} ${m?.user?.email ?? m?.email ?? ""}`.toLowerCase(),
+      }))
+      .filter((p) => p.id && p.id !== selfId);
+    mentionCache = { at: now, people };
+    return people;
+  }
+
+  // Takes Liveblocks args { roomId, text }; returns matching member user ids.
+  // Returns [] on any error so the composer keeps working without mentions.
+  async function resolveMentionSuggestions({ text }) {
+    try {
+      const needle = String(text ?? "").toLowerCase();
+      const people = await loadMentionPeople();
+      if (!needle) return people.map((p) => p.id);
+      return people.filter((p) => p.label.includes(needle)).map((p) => p.id);
+    } catch {
+      return [];
+    }
+  }
+
   // Singleton client: authEndpoint mints a per-document token (see
   // /api/liveblocks-auth), resolveUsers gives every connection a display
   // name/avatar. This authenticated traffic is what clears the Liveblocks
   // dashboard "set up authentication" warning.
   const client = createClient({
-    publicApiKey,
     throttle: 100,
     authEndpoint: "/api/liveblocks-auth",
     resolveUsers: async ({ userIds }) => {
@@ -45,18 +134,19 @@ if (liveblocksEnabled) {
         return userIds.map(() => ({}));
       }
     },
-    resolveMentionSuggestions: async () => {
-      // No org directory yet: mentions disabled, composer still works.
-      return [];
-    },
+    resolveMentionSuggestions,
   });
   const room = createRoomContext(client);
   RoomProvider = room.RoomProvider;
   ClientSuspense = room.ClientSideSuspense;
+  useRoomHook = room.useRoom;
   useOthersHook = room.useOthers;
   useMyPresenceHook = room.useMyPresence;
   useStatusHook = room.useStatus;
   useThreadsHook = room.useThreads;
+  useInboxNotificationsHook = room.useInboxNotifications;
+  useUnreadInboxNotificationsCountHook = room.useUnreadInboxNotificationsCount;
+  useMarkAllInboxNotificationsAsReadHook = room.useMarkAllInboxNotificationsAsRead;
 } else if (typeof window !== "undefined") {
   console.warn(
     "[liveblocks] Disabled: set NEXT_PUBLIC_LIVEBLOCKS_PUBLIC_KEY to a pk_ key. Presence stays off; editing works.",
@@ -173,7 +263,9 @@ export function LiveDocRoom({ documentId, children }) {
   return (
     <RoomProvider id={documentId} initialPresence={{ cursor: null }}>
       {ClientSuspense ? (
-        <ClientSuspense fallback={<>{children}</>}>{() => inner}</ClientSuspense>
+        <ClientSuspense fallback={<>{children}</>}>
+          {() => <LiveYjsHost>{inner}</LiveYjsHost>}
+        </ClientSuspense>
       ) : (
         <>{inner}</>
       )}
@@ -181,13 +273,6 @@ export function LiveDocRoom({ documentId, children }) {
   );
 }
 
-// Takes document id, org id, plus children; scopes presence to org documents.
-// Returns the room provider for shared workspaces, plain children otherwise.
-// Personal documents never touch Liveblocks: no usage burned, no presence leaked.
-export function OrgDocRoom({ documentId, orgId, children }) {
-  if (!orgId) return <>{children}</>;
-  return <LiveDocRoom documentId={documentId}>{children}</LiveDocRoom>;
-}
 // Takes no props; shows who else views this document. Returns avatar stack UI.
 function PresenceAvatarsInner() {
   const others = useOthersHook();
@@ -235,10 +320,12 @@ function PresenceAvatarsInner() {
   );
 }
 
-// Takes no props; shows who else views this document. Returns avatar stack UI.
-// Renders a live dot when alone, nothing extra when Liveblocks is disabled.
-export function PresenceAvatars() {
-  if (!useOthersHook) return null;
+// Takes optional inRoom flag; shows who else views this document. Returns
+// avatar stack UI. Renders a live dot when alone, nothing extra when
+// Liveblocks is disabled. Personal documents pass inRoom=false (no room, no
+// hooks, no crash and no presence leak).
+export function PresenceAvatars({ inRoom = true }) {
+  if (!inRoom || !useOthersHook) return null;
   return <PresenceAvatarsInner />;
 }
 
@@ -251,4 +338,29 @@ export function isLiveblocksEnabled() {
 // Split outer (gates on isLiveblocksEnabled) / inner (calls hook) keeps hooks unconditional.
 export function useLiveThreads(options) {
   return useThreadsHook(options);
+}
+
+// Raw inbox hooks. Call only inside a room context (document editor or
+// <InboxRoomProvider>) when enabled; guarded outer versions skip API errors.
+export function useInboxNotifications(options) {
+  return useInboxNotificationsHook(options);
+}
+export function useUnreadInboxNotificationsCount(options) {
+  return useUnreadInboxNotificationsCountHook(options);
+}
+export function useMarkAllInboxNotificationsAsRead() {
+  return useMarkAllInboxNotificationsAsReadHook();
+}
+
+// In-room wrapper for the per-user dash board: connects to one pseudo room so
+// inbox hooks have a room context outside the document editor. Dashboard only.
+// Takes room id plus children; returns provider UI; null children pass-through
+// when Liveblocks is disabled.
+export function InboxRoomProvider({ roomId, children }) {
+  if (!liveblocksEnabled || !RoomProvider || !roomId) return <>{children}</>;
+  return (
+    <RoomProvider id={roomId} initialPresence={{ cursor: null }}>
+      {children}
+    </RoomProvider>
+  );
 }

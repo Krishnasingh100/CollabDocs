@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { auth } from "./server";
 // Shared owner id for local dev without auth env. Still uses real database.
 export const LOCAL_OWNER_ID = "local-dev";
@@ -5,15 +6,14 @@ export const LOCAL_OWNER_ID = "local-dev";
 export function isAuthConfigured() {
   return Boolean(process.env.NEON_AUTH_BASE_URL && process.env.NEON_AUTH_COOKIE_SECRET);
 }
+// Cache the session read per server request: a render that calls both the
+// auth check and the workspace resolution hits Neon Auth once, not twice.
+const getSessionCached = cache(() => auth.getSession().catch(() => ({ data: null })));
 // Takes nothing, reads signed-in session for workspace scope. Returns session or null.
 // Returns null on missing env or network failure for localStorage fallback.
 export async function requireSession() {
-  try {
-    const { data: session } = await auth.getSession();
-    return session ?? null;
-  } catch {
-    return null;
-  }
+  const { data: session } = await getSessionCached();
+  return session ?? null;
 }
 // Takes nothing, reads signed-in user for API guards. Returns user or null.
 // Returns null on missing env or network failure for localStorage fallback.

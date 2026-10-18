@@ -1,9 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Check, CloudOff, FileText, Loader2 } from "lucide-react";
 import Link from "next/link";
+import { isChangeOrigin } from "@tiptap/extension-collaboration";
 import { Separator } from "@/components/ui/separator";
+import { authClient } from "@/lib/auth/client";
 import { getLocalDocument, saveLocalDocument } from "@/lib/documents";
 import { cn } from "@/lib/utils";
 import { EditorToolbar } from "./editor-toolbar";
@@ -11,7 +13,8 @@ import { DEFAULT_MARGIN, MarginRuler } from "./margin-ruler";
 import { DocumentMenubar } from "./document-menubar";
 import { AccountMenu } from "@/components/auth/account-menu";
 import { PageEditor } from "./page-editor";
-import { PresenceAvatars } from "./live-room";
+import { PresenceAvatars, useLiveYjs } from "./live-room";
+import { NotificationBell } from "@/components/notifications/notification-bell";
 import { CommentsButton, CommentsPanel } from "./comments-panel";
 import { buildSettleSignature, isSettleCycle, serializeDocJsonToHtml } from "./document-styles";
 import "./editor.css";
@@ -251,8 +254,31 @@ function classifyLastNode(ed, contentH, padTop) {
   return { kind: "whole" };
 }
 
-// Takes document id; paginates editing across sheets; renders editor.
-export function DocumentEditor({ documentId }) {
+// Takes document id plus org id (null for personal docs); paginates editing
+// across sheets; renders editor. Personal documents never touch Yjs or any
+// room: content edits stay on the owner's own API. Shared org documents join
+// the Liveblocks room and use the shared Y.Doc for real-time collaboration.
+export function DocumentEditor({ documentId, orgId = null }) {
+  // Live Yjs collaboration context (null when disabled or outside a room).
+  const yctx = useLiveYjs();
+  const { data: sessionData } = authClient.useSession();
+  const sessionUser = sessionData?.user ?? null;
+  // Room only exists for organization documents: gates every room hook below.
+  const inRoom = Boolean(yctx);
+  // Collaboration binding handed to each sheet: shared Y.Doc, provider and
+  // stable display identity for the caret.
+  const liveUser = useMemo(
+    () => ({
+      name: String(sessionUser?.name ?? sessionUser?.email ?? "You").slice(0, 80),
+      color: "#1a73e8",
+    }),
+    [sessionUser?.name, sessionUser?.email],
+  );
+  const collab = useMemo(
+    () => (yctx ? { ydoc: yctx.ydoc, provider: yctx.provider ?? null, user: liveUser } : null),
+    [yctx, liveUser],
+  );
+  const collabActive = Boolean(collab?.ydoc);
   const [title, setTitle] = useState("Untitled document");
   const [loaded, setLoaded] = useState(false);
   const [saveState, setSaveState] = useState("saved");
@@ -499,6 +525,23 @@ export function DocumentEditor({ documentId }) {
   // The flow engine: pulls blocks into gaps and pushes overflow down; settles pagination.
   const reflow = useCallback(() => {
     if (reflowing.current) return;
+    // Co-editing leader lock: when other peers share the room, only the peer
+    // holding a caret repaginates. Two peers moving blocks at once would race
+    // the shared Y.Doc and duplicate or swallow blocks; the focused writer
+    // owns pagination, everyone else mirrors fragments.
+    if (collabActive && yctx?.provider) {
+      const peers = yctx.provider.awareness?.getStates?.().size ?? 1;
+      if (peers > 1) {
+        let focused = false;
+        for (const ed of editorsRef.current.values()) {
+          if (ed && !ed.isDestroyed && ed.isFocused) {
+            focused = true;
+            break;
+          }
+        }
+        if (!focused) return;
+      }
+    }
     const count = pageCountRef.current;
     let ready = 0;
     for (let i = 0; i < count; i++) {
@@ -634,6 +677,8 @@ export function DocumentEditor({ documentId }) {
     moveLastNodeDown,
     setPages,
     scheduleReflow,
+    collabActive,
+    yctx,
   ]);
 
   useEffect(() => {
@@ -731,19 +776,24 @@ export function DocumentEditor({ documentId }) {
     return { json, html, text, margins };
   }, [buildFullDoc, margins]);
 
-  // Takes current content plus title; saves locally then API; updates save state.
+  // Takes current content plus title; saves via API; personal docs also keep
+  // a local fallback copy; updates save state.
   const persist = useCallback(async () => {
     const now = new Date().toISOString();
     const { content, text } = buildFullDoc();
-    const existing = getLocalDocument(documentId);
-    saveLocalDocument({
-      id: documentId,
-      title,
-      content: { type: "doc", content },
-      plainText: text.slice(0, 20000),
-      createdAt: existing?.createdAt ?? now,
-      updatedAt: now,
-    });
+    // Privacy: organization documents never write content to localStorage
+    // (shared machines); the API copy is the only client-side store for them.
+    if (!orgId) {
+      const existing = getLocalDocument(documentId);
+      saveLocalDocument({
+        id: documentId,
+        title,
+        content: { type: "doc", content },
+        plainText: text.slice(0, 20000),
+        createdAt: existing?.createdAt ?? now,
+        updatedAt: now,
+      });
+    }
     try {
       const res = await fetch(`/api/documents/${documentId}`, {
         method: "PATCH",
@@ -759,7 +809,7 @@ export function DocumentEditor({ documentId }) {
     } catch {
       setSaveState("offline");
     }
-  }, [documentId, title, buildFullDoc]);
+  }, [documentId, title, buildFullDoc, orgId]);
 
   useEffect(() => {
     persistRef.current = persist;
@@ -773,6 +823,8 @@ export function DocumentEditor({ documentId }) {
   }, []);
 
   // Takes page update plus transaction; refreshes words and reflows; schedules save.
+  // Remote Yjs replay (co-edits from peers) refreshes counts only: local save
+  // bursts and repagination belong to the peer currently holding the caret.
   const onPageUpdate = useCallback(
     (i, ed, transaction) => {
       let words = 0;
@@ -781,7 +833,8 @@ export function DocumentEditor({ documentId }) {
       }
       setWordCount(words);
       const meta = transaction?.getMeta("pageflow");
-      if (!meta) {
+      const remoteUpdate = Boolean(transaction && isChangeOrigin(transaction));
+      if (!meta && !remoteUpdate) {
         setSaveState("saving");
         if (saveTimer.current) clearTimeout(saveTimer.current);
         saveTimer.current = setTimeout(() => persistRef.current?.(), 900);
@@ -790,8 +843,9 @@ export function DocumentEditor({ documentId }) {
       }
       // User edits reflow at once for exact overflow; reflow moves stay async.
       // Skips composing pages, then scrolls focused caret into view.
-      if (meta) scheduleReflow();
-      else {
+      if (meta) {
+        scheduleReflow();
+      } else if (!remoteUpdate) {
         reflowRef.current?.();
         requestAnimationFrame(() => ensureFocusedCaretVisible(editorsRef));
       }
@@ -870,10 +924,13 @@ export function DocumentEditor({ documentId }) {
           throw new Error("api miss");
         }
       } catch {
-        const local = getLocalDocument(documentId);
-        if (local) {
-          docTitle = local.title;
-          content = local.content;
+        // Privacy: org documents keep no localStorage copy, so nothing to fall back to.
+        if (!orgId) {
+          const local = getLocalDocument(documentId);
+          if (local) {
+            docTitle = local.title;
+            content = local.content;
+          }
         }
       }
       if (cancelled) return;
@@ -881,7 +938,12 @@ export function DocumentEditor({ documentId }) {
       setTitle(docTitle);
       setInitialPages([arr]);
       const ed0 = editorsRef.current.get(0);
-      if (ed0 && !ed0.isDestroyed) {
+      if (
+        !collabActive &&
+        ed0 &&
+        !ed0.isDestroyed &&
+        ed0.isEmpty
+      ) {
         try {
           ed0.commands.setContent(
             arr.length
@@ -903,7 +965,7 @@ export function DocumentEditor({ documentId }) {
     return () => {
       cancelled = true;
     };
-  }, [documentId, setPages, scheduleReflow]);
+  }, [documentId, setPages, scheduleReflow, orgId, collabActive]);
 
   // Side margins controlled by the ruler, persisted per document locally.
   // Read storage on a macrotask so the initial sync render stays pure.
@@ -1055,6 +1117,24 @@ export function DocumentEditor({ documentId }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [saveNow]);
 
+  // Co-editing: grow local page count from the shared Y.Doc so a mid-session
+  // joiner of a multi-page document paginates like the writer who came first.
+  // Fragments named sheet{i} map 1:1 with page editors (see PageEditor).
+  useEffect(() => {
+    if (!collabActive || !yctx?.provider || !inRoom) return;
+    const timer = setInterval(() => {
+      if (loadedRef.current !== true) return;
+      if (!yctx?.provider?.synced) return;
+      let maxLive = 1;
+      for (let i = 1; i < 200; i++) {
+        if (yctx.ydoc.getXmlFragment(`sheet${i}`).length === 0) break;
+        maxLive = i + 1;
+      }
+      if (maxLive > pageCountRef.current) setPages(maxLive);
+    }, 800);
+    return () => clearInterval(timer);
+  }, [collabActive, yctx, inRoom, setPages]);
+
   // Takes gap click; finds nearest page edge; focuses that page.
   const routeGapClick = useCallback(
     (e) => {
@@ -1083,23 +1163,26 @@ export function DocumentEditor({ documentId }) {
     [focusPage],
   );
 
-  // Takes next title; debounces title save locally plus API; updates title.
+  // Takes next title; debounces title save (plus local fallback for personal
+  // docs) to the API; updates title.
   const saveTitle = useCallback(
     (next) => {
       setTitle(next);
       if (titleTimer.current) clearTimeout(titleTimer.current);
       titleTimer.current = setTimeout(async () => {
         const now = new Date().toISOString();
-        const existing = getLocalDocument(documentId);
-        const { content, text } = buildFullDoc();
-        saveLocalDocument({
-          id: documentId,
-          title: next || "Untitled document",
-          content: { type: "doc", content },
-          plainText: text || existing?.plainText || "",
-          createdAt: existing?.createdAt ?? now,
-          updatedAt: now,
-        });
+        if (!orgId) {
+          const existing = getLocalDocument(documentId);
+          const { content, text } = buildFullDoc();
+          saveLocalDocument({
+            id: documentId,
+            title: next || "Untitled document",
+            content: { type: "doc", content },
+            plainText: text || existing?.plainText || "",
+            createdAt: existing?.createdAt ?? now,
+            updatedAt: now,
+          });
+        }
         try {
           await fetch(`/api/documents/${documentId}`, {
             method: "PATCH",
@@ -1112,7 +1195,7 @@ export function DocumentEditor({ documentId }) {
         }
       }, 700);
     },
-    [documentId, buildFullDoc],
+    [documentId, buildFullDoc, orgId],
   );
 
   return (
@@ -1143,7 +1226,7 @@ export function DocumentEditor({ documentId }) {
               </>
             ) : saveState === "offline" ? (
               <>
-                <CloudOff className="size-3" /> Saved locally
+                <CloudOff className="size-3" /> {orgId ? "Saved later" : "Saved locally"}
               </>
             ) : (
               <>
@@ -1152,8 +1235,9 @@ export function DocumentEditor({ documentId }) {
             )}
           </span>
           <span className="ml-auto flex shrink-0 items-center gap-2">
-            <CommentsButton open={commentsOpen} onToggle={() => setCommentsOpen((v) => !v)} />
-            <PresenceAvatars />
+            <CommentsButton open={commentsOpen} onToggle={() => setCommentsOpen((v) => !v)} inRoom={inRoom} />
+            <PresenceAvatars inRoom={inRoom} />
+            <NotificationBell query={{ roomId: documentId }} inRoom={inRoom} />
             <AccountMenu />
           </span>
         </div>
@@ -1213,6 +1297,7 @@ export function DocumentEditor({ documentId }) {
                 onFocus={onPageFocus}
                 registerEditor={registerEditor}
                 registerDom={registerDom}
+                collab={collab}
               />
             ))
           )}
@@ -1240,7 +1325,7 @@ export function DocumentEditor({ documentId }) {
         </div>
       </footer>
 
-      <CommentsPanel open={commentsOpen} onClose={() => setCommentsOpen(false)} />
+      <CommentsPanel open={commentsOpen} onClose={() => setCommentsOpen(false)} inRoom={inRoom} />
     </div>
   );
 }

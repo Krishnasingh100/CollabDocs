@@ -5,6 +5,7 @@ import Image from "next/image";
 import { Check, Loader2, LogOut, Mail, UserPlus, Users, X } from "lucide-react";
 import { authClient } from "@/lib/auth/client";
 import { notifyWorkspaceChanged } from "@/components/auth/workspace-switcher";
+import { sendOrgNotification } from "@/components/notifications/notification-bell";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -113,6 +114,29 @@ export function OrganizationPanel() {
     router.refresh();
   };
 
+  // Best-effort ping after this user accepts an invite: tells the other org
+  // members "$orgMemberJoined" with member ids from the org profile dialog.
+  // Does not force a member fetch that would slow the accept flow.
+  const announceJoinToOrg = async () => {
+    try {
+      const result = await authClient.organization.getFullOrganization();
+      const org = readData(result);
+      const targets = (Array.isArray(org?.members) ? org.members : [])
+        .map((m) => m?.userId ?? m?.user?.id)
+        .filter(Boolean)
+        .filter((id) => id !== user?.id);
+      if (!org?.id || targets.length === 0) return;
+      void sendOrgNotification({
+        kind: "$orgMemberJoined",
+        orgId: org.id,
+        orgName: org.name,
+        targets,
+      });
+    } catch {
+      // Notification is optional; joining already succeeded.
+    }
+  };
+
   const inviteMember = async () => {
     const email = inviteEmail.trim().toLowerCase();
     if (!email || !activeOrg || inviting) return;
@@ -175,6 +199,7 @@ export function OrganizationPanel() {
             // Still joined; workspace refresh picks up membership.
           }
         }
+        announceJoinToOrg();
         setOpen(false);
         afterWorkspaceChange();
       }

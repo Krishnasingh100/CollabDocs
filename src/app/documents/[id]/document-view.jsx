@@ -22,12 +22,14 @@ const DocumentEditor = nextDynamic(
   },
 );
 
-// Takes a document id; provides the Liveblocks room plus the lazy editor.
-// Returns the full editing view. Room auth is enforced server-side per doc.
-export function DocumentView({ documentId }) {
-  return (
-    <LiveDocRoom documentId={documentId}>
-      <DocumentEditor documentId={documentId} />
-    </LiveDocRoom>
-  );
+// Takes a document id plus its org id (null for personal documents); scopes
+// live collaboration. Returns the full editing view.
+// Privacy: personal documents never enter a Liveblocks room — no Yjs, no
+// presence, no shared content on third-party servers; they sync through the
+// owner's own /api/documents endpoints only. Shared org documents connect to
+// the room for real-time collaboration; room auth is enforced server-side.
+export function DocumentView({ documentId, orgId = null }) {
+  const editor = <DocumentEditor documentId={documentId} orgId={orgId} />;
+  if (!orgId) return editor;
+  return <LiveDocRoom documentId={documentId}>{editor}</LiveDocRoom>;
 }

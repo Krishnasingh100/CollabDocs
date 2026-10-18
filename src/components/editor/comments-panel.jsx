@@ -6,11 +6,34 @@ import { Composer, Thread } from "@liveblocks/react-ui";
 import { isLiveblocksEnabled, useLiveThreads } from "./live-room";
 
 // Document-level live comments powered by Liveblocks Threads.
-// No input; outer gate returns null when Liveblocks disabled. Inner always
-// runs hooks unconditionally inside <LiveDocRoom>.
-export function CommentsPanel({ open, onClose }) {
+// Takes open state, close handler and inRoom flag. Outer gate returns null
+// when Liveblocks disabled. Inner always runs hooks unconditionally inside
+// <LiveDocRoom>. Without a room (personal documents) the panel renders a
+// plain placeholder instead of calling any room hook.
+export function CommentsPanel({ open, onClose, inRoom = true }) {
   if (!open) return null;
   if (!isLiveblocksEnabled()) return null;
+  if (!inRoom) {
+    return (
+      <aside
+        aria-label="Document comments"
+        className="fixed top-[104px] right-4 bottom-16 z-40 flex w-[min(360px,calc(100vw-2rem))] flex-col items-center justify-center overflow-hidden rounded-xl border border-[#dadce0] bg-white p-6 text-center shadow-xl"
+      >
+        <MessageSquare className="size-6 text-muted-foreground" />
+        <h2 className="mt-3 text-sm font-semibold">Live comments</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Live comments are available for shared organization documents.
+        </p>
+        <button
+          type="button"
+          onClick={onClose}
+          className="mt-4 rounded-md border border-[#dadce0] px-3 py-1.5 text-sm outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          Close
+        </button>
+      </aside>
+    );
+  }
   return <CommentsPanelInner onClose={onClose} />;
 }
 
@@ -94,16 +117,23 @@ function CommentsPanelInner({ onClose }) {
   );
 }
 
-// Takes open state plus toggle; renders header bell with live open-thread count.
-// Returns null when Liveblocks disabled. Must render inside <LiveDocRoom>.
-export function CommentsButton({ open, onToggle }) {
+// Takes open state plus toggle plus inRoom flag; renders header bell with the
+// live open-thread count when inside a room. Returns null when Liveblocks is
+// disabled, and a plain comment button without a count when not in a room.
+export function CommentsButton({ open, onToggle, inRoom = true }) {
   if (!isLiveblocksEnabled()) return null;
-  return <CommentsButtonInner open={open} onToggle={onToggle} />;
+  if (!inRoom) return <CommentsButtonPlain open={open} onToggle={onToggle} count={0} />;
+  return <CommentsButtonLive open={open} onToggle={onToggle} />;
 }
 
-function CommentsButtonInner({ open, onToggle }) {
+// Call only inside <LiveDocRoom>: hooks require room context.
+function CommentsButtonLive({ open, onToggle }) {
   const { threads } = useLiveThreads({ query: { resolved: false } });
-  const count = threads?.length ?? 0;
+  return <CommentsButtonPlain open={open} onToggle={onToggle} count={threads?.length ?? 0} />;
+}
+
+// Renders the comment toggle button; optional open-thread count.
+function CommentsButtonPlain({ open, onToggle, count }) {
   return (
     <button
       type="button"

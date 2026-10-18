@@ -1,6 +1,9 @@
 import { redirect, notFound } from "next/navigation";
 import { DocumentView } from "./document-view";
-import { isAuthConfigured, requireSession } from "@/lib/auth/require-user";
+import { db } from "@/db";
+import { documentsTable } from "@/db/schema";
+import { isAuthConfigured, requireSession, resolveWorkspace } from "@/lib/auth/require-user";
+import { workspaceCondition } from "@/lib/documents-access";
 
 export const dynamic = "force-dynamic";
 
@@ -26,5 +29,22 @@ export default async function DocumentPage({ params }) {
     const session = await requireSession();
     if (!session?.user) redirect("/sign-in");
   }
-  return <DocumentView documentId={id} />;
+  // Resolve the workspace scope once on the server: org documents get the
+  // live collaboration room, personal documents stay room-free end to end.
+  // A lookup failure keeps the page usable (the editor falls back to its API).
+  let orgId = null;
+  try {
+    const workspace = await resolveWorkspace();
+    if (workspace) {
+      const rows = await db
+        .select({ orgId: documentsTable.orgId })
+        .from(documentsTable)
+        .where(workspaceCondition(workspace, id))
+        .limit(1);
+      if (rows[0]) orgId = rows[0].orgId ?? null;
+    }
+  } catch {
+    orgId = null;
+  }
+  return <DocumentView documentId={id} orgId={orgId} />;
 }
