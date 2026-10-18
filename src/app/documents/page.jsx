@@ -44,9 +44,7 @@ import {
 } from "@/lib/documents";
 import { TEMPLATES } from "@/components/documents/templates";
 import { TemplateThumbnail } from "@/components/documents/template-thumbnail";
-import { AccountMenu } from "@/components/auth/account-menu";
-import { OrganizationPanel } from "@/components/auth/organization-panel";
-import { WORKSPACE_CHANGED_EVENT, WorkspaceSwitcher } from "@/components/auth/workspace-switcher";
+import { OrganizationSwitcher, UserButton } from "@neondatabase/auth/react/ui";
 import { authClient } from "@/lib/auth/client";
 import { FILE_ACCEPT, SUPPORTED_LABEL, parseFileToDocument } from "@/lib/file-open";
 import {
@@ -105,15 +103,11 @@ export default function DocumentsPage() {
       setLoading(false);
     }
   };
+  // Refetch whenever the active workspace changes: the Neon organization
+  // switcher updates activeOrganizationId through the auth client, and the
+  // dependency below re-runs the fetch for the newly active scope.
   useEffect(() => {
     void refresh();
-    const onWorkspaceChanged = () => {
-      void refresh();
-    };
-    window.addEventListener(WORKSPACE_CHANGED_EVENT, onWorkspaceChanged);
-    return () => {
-      window.removeEventListener(WORKSPACE_CHANGED_EVENT, onWorkspaceChanged);
-    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeOrgId]);
   const filtered = useMemo(() => {
@@ -270,14 +264,11 @@ export default function DocumentsPage() {
             </span>
             <span className="hidden text-xl min-[420px]:inline">CollabDocs</span>
           </Link>
-          <div className="ml-auto flex shrink-0 items-center gap-1 rounded-xl border border-border bg-card p-1">
-            <div className="w-32 sm:w-44">
-              <WorkspaceSwitcher />
-            </div>
-            <OrganizationPanel />
-          </div>
-          <NotificationBell />
-          <AccountMenu />
+          <span className="ml-auto flex shrink-0 items-center gap-1.5">
+            <OrganizationSwitcher />
+            <NotificationBell />
+            <UserButton />
+          </span>
         </div>
 
         <div className="mx-auto w-full max-w-xl">

@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 import { EditorToolbar } from "./editor-toolbar";
 import { DEFAULT_MARGIN, MarginRuler } from "./margin-ruler";
 import { DocumentMenubar } from "./document-menubar";
-import { AccountMenu } from "@/components/auth/account-menu";
+import { UserButton } from "@neondatabase/auth/react/ui";
 import { PageEditor } from "./page-editor";
 import { PresenceAvatars, useLiveYjs } from "./live-room";
 import { NotificationBell } from "@/components/notifications/notification-bell";
@@ -1238,7 +1238,7 @@ export function DocumentEditor({ documentId, orgId = null }) {
             <CommentsButton open={commentsOpen} onToggle={() => setCommentsOpen((v) => !v)} inRoom={inRoom} />
             <PresenceAvatars inRoom={inRoom} />
             <NotificationBell query={{ roomId: documentId }} inRoom={inRoom} />
-            <AccountMenu />
+            <UserButton />
           </span>
         </div>
         <div className="flex h-8 items-center overflow-x-auto px-3">

@@ -1,10 +1,8 @@
-import { ResetPasswordForm } from "./reset-form";
-export default async function ResetPasswordPage({ searchParams }) {
-  const params = await searchParams;
-  const initialEmail = typeof params?.email === "string" ? params.email : "";
+import { AuthView } from "@neondatabase/auth/react/ui";
+export default function ResetPasswordPage() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-muted/40 px-4 py-10">
-      <ResetPasswordForm initialEmail={initialEmail} />
+      <AuthView view="RESET_PASSWORD" />
     </main>
   );
 }
