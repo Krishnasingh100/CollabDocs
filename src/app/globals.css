@@ -119,6 +119,12 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
+/* Third-party branding never shows in the product UI. The composer
+   attribution is already disabled by prop; this hides it everywhere. */
+.lb-composer-attribution {
+  display: none;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

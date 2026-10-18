@@ -118,7 +118,7 @@ function NotificationListPanel({ query }) {
   if (error) {
     return (
       <p className="py-8 text-center text-sm text-destructive">
-        Notifications failed to load. Liveblocks may be unreachable.
+        Notifications failed to load.
       </p>
     );
   }
