@@ -13,8 +13,8 @@ import { auth } from "@/lib/auth/server";
 // buffered once so each replay gets a fresh Request (a NextRequest stream can
 // only be consumed once).
 const handlers = auth.handler();
-const MAX_ATTEMPTS = 3;
-const RETRY_DELAY_MS = 400;
+const MAX_ATTEMPTS = 4;
+const RETRY_DELAY_MS = 600;
 
 function prepareRequest(nextRequest) {
   const hasBody = nextRequest.method !== "GET" && nextRequest.method !== "HEAD";

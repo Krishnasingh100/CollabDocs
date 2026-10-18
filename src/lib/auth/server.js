@@ -1,3 +1,4 @@
+import "@/lib/network";
 import { createNeonAuth } from "@neondatabase/auth/next/server";
 // Server auth instance for API handler, sessions, and email methods. Needs Neon Auth env.
 // Uses placeholders at build time so `next build` passes without live env.
