@@ -1,7 +1,7 @@
 "use client";
 import { memo, createContext, useCallback, useContext, useEffect } from "react";
 import { createClient } from "@liveblocks/client";
-import { createRoomContext } from "@liveblocks/react";
+import { ClientSideSuspense, createLiveblocksContext, createRoomContext } from "@liveblocks/react";
 import { getYjsProviderForRoom } from "@liveblocks/yjs";
 import { authClient } from "@/lib/auth/client";
 
@@ -137,16 +137,21 @@ if (liveblocksEnabled) {
     resolveMentionSuggestions,
   });
   const room = createRoomContext(client);
+  // Inbox/notification hooks moved to createLiveblocksContext in
+  // @liveblocks/react v3 — createRoomContext no longer returns them. Reading
+  // them from the room context left the variables undefined and crashed the
+  // dashboard bell with "ef is not a function" on every page load.
+  const liveblocks = createLiveblocksContext(client);
   RoomProvider = room.RoomProvider;
-  ClientSuspense = room.ClientSideSuspense;
+  ClientSuspense = ClientSideSuspense;
   useRoomHook = room.useRoom;
   useOthersHook = room.useOthers;
   useMyPresenceHook = room.useMyPresence;
   useStatusHook = room.useStatus;
   useThreadsHook = room.useThreads;
-  useInboxNotificationsHook = room.useInboxNotifications;
-  useUnreadInboxNotificationsCountHook = room.useUnreadInboxNotificationsCount;
-  useMarkAllInboxNotificationsAsReadHook = room.useMarkAllInboxNotificationsAsRead;
+  useInboxNotificationsHook = liveblocks.useInboxNotifications;
+  useUnreadInboxNotificationsCountHook = liveblocks.useUnreadInboxNotificationsCount;
+  useMarkAllInboxNotificationsAsReadHook = liveblocks.useMarkAllInboxNotificationsAsRead;
 } else if (typeof window !== "undefined") {
   console.warn(
     "[liveblocks] Disabled: set NEXT_PUBLIC_LIVEBLOCKS_PUBLIC_KEY to a pk_ key. Presence stays off; editing works.",
@@ -336,19 +341,28 @@ export function isLiveblocksEnabled() {
 
 // Raw room threads hook. Call only inside <LiveDocRoom> when enabled.
 // Split outer (gates on isLiveblocksEnabled) / inner (calls hook) keeps hooks unconditional.
+// Falls back to an empty result so a missing Liveblocks hook can never crash
+// a page again (the flag is fixed per build, so hook order stays stable).
 export function useLiveThreads(options) {
+  if (!useThreadsHook) return { threads: [], isLoading: false, error: null };
   return useThreadsHook(options);
 }
 
 // Raw inbox hooks. Call only inside a room context (document editor or
 // <InboxRoomProvider>) when enabled; guarded outer versions skip API errors.
+// Each falls back to inert values when the underlying hook is unavailable.
 export function useInboxNotifications(options) {
+  if (!useInboxNotificationsHook) {
+    return { inboxNotifications: [], isLoading: false, error: null };
+  }
   return useInboxNotificationsHook(options);
 }
 export function useUnreadInboxNotificationsCount(options) {
+  if (!useUnreadInboxNotificationsCountHook) return { count: 0, isLoading: false };
   return useUnreadInboxNotificationsCountHook(options);
 }
 export function useMarkAllInboxNotificationsAsRead() {
+  if (!useMarkAllInboxNotificationsAsReadHook) return () => {};
   return useMarkAllInboxNotificationsAsReadHook();
 }
 
