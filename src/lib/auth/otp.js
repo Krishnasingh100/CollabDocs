@@ -34,9 +34,11 @@ export function sendVerificationOtp(email) {
 export function sendPasswordResetOtp(email) {
   return post("/email-otp/send-verification-otp", { email, type: "forget-password" });
 }
-// Takes email and code, verifies new account. Returns auth response.
-export function checkVerificationOtp(email, otp) {
-  return post("/email-otp/check-verification-otp", { email, otp, type: "email-verification" });
+// Takes email and code, marks the account email verified. Returns auth response.
+// Uses /email-otp/verify-email: unlike /check-verification-otp it persists
+// emailVerified=true, which unblocks password sign-in afterwards.
+export function verifyEmailOtp(email, otp) {
+  return post("/email-otp/verify-email", { email, otp });
 }
 // Takes email, code, and password, resets password. Returns auth response.
 export function resetPasswordWithOtp(email, otp, password) {

@@ -1,7 +1,9 @@
 "use server";
 import { redirect } from "next/navigation";
-import { checkVerificationOtp, sendVerificationOtp } from "@/lib/auth/otp";
-// Takes email and code, verifies new account. Returns error or documents redirect.
+import { sendVerificationOtp, verifyEmailOtp } from "@/lib/auth/otp";
+// Takes email and code, marks the account verified. Returns error or sign-in redirect.
+// Verification creates no session, so the user finishes by signing in with the
+// password they chose; the email is prefilled and the notice confirms success.
 export async function verifyOtpAction(_prevState, formData) {
   const email = String(formData.get("email") ?? "").trim();
   const otp = String(formData.get("otp") ?? "").replace(/\D/g, "");
@@ -9,11 +11,11 @@ export async function verifyOtpAction(_prevState, formData) {
     return { error: "Enter your email and the 6-digit code." };
   }
   try {
-    await checkVerificationOtp(email, otp);
+    await verifyEmailOtp(email, otp);
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Code check failed. Try again." };
   }
-  redirect("/documents");
+  redirect(`/sign-in?verified=1&email=${encodeURIComponent(email)}`);
 }
 // Takes email, resends verification code. Returns sent flag or error.
 export async function resendOtpAction(_prevState, formData) {

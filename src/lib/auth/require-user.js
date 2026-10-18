@@ -8,7 +8,11 @@ export function isAuthConfigured() {
 }
 // Cache the session read per server request: a render that calls both the
 // auth check and the workspace resolution hits Neon Auth once, not twice.
-const getSessionCached = cache(() => auth.getSession().catch(() => ({ data: null })));
+// disableCookieCache keeps activeOrganizationId fresh after joining or
+// switching a workspace; the cached cookie copy can lag behind by a request.
+const getSessionCached = cache(() =>
+  auth.getSession({ query: { disableCookieCache: "true" } }).catch(() => ({ data: null })),
+);
 // Takes nothing, reads signed-in session for workspace scope. Returns session or null.
 // Returns null on missing env or network failure for localStorage fallback.
 export async function requireSession() {
