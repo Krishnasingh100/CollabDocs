@@ -12,7 +12,15 @@ function normalizeOrigin(request) {
   if (origin && origin !== "null") return request;
   const headers = new Headers(request.headers);
   headers.set("origin", new URL(request.url).origin);
-  return new Request(request, { headers });
+  // Rebuild as a plain Request: NextRequest instances cannot be passed to
+  // `new Request()`, and stream bodies need the duplex flag on Node.
+  const hasBody = request.method !== "GET" && request.method !== "HEAD";
+  return new Request(request.url, {
+    method: request.method,
+    headers,
+    body: hasBody ? request.body : undefined,
+    ...(hasBody ? { duplex: "half" } : {}),
+  });
 }
 export const GET = (request, context) => handlers.GET(normalizeOrigin(request), context);
 export const POST = (request, context) => handlers.POST(normalizeOrigin(request), context);
