@@ -10,14 +10,27 @@ export function isAuthConfigured() {
 // auth check and the workspace resolution hits Neon Auth once, not twice.
 // disableCookieCache keeps activeOrganizationId fresh after joining or
 // switching a workspace; the cached cookie copy can lag behind by a request.
-const getSessionCached = cache(() =>
-  auth.getSession({ query: { disableCookieCache: "true" } }).catch(() => ({ data: null })),
-);
+// `reachable` separates "definitely signed out" from "Neon Auth could not be
+// reached": page guards must not bounce users to sign-in on a network blip,
+// or every document click fails to open while the network hiccups.
+const getSessionResult = cache(async () => {
+  try {
+    const { data } = await auth.getSession({ query: { disableCookieCache: "true" } });
+    return { session: data ?? null, reachable: true };
+  } catch {
+    return { session: null, reachable: false };
+  }
+});
 // Takes nothing, reads signed-in session for workspace scope. Returns session or null.
 // Returns null on missing env or network failure for localStorage fallback.
 export async function requireSession() {
-  const { data: session } = await getSessionCached();
-  return session ?? null;
+  const { session } = await getSessionResult();
+  return session;
+}
+// Takes nothing, reads session plus whether Neon Auth answered at all.
+// Returns { session, reachable }; reachable=false means network trouble, not sign-out.
+export async function requireSessionResult() {
+  return getSessionResult();
 }
 // Takes nothing, reads signed-in user for API guards. Returns user or null.
 // Returns null on missing env or network failure for localStorage fallback.

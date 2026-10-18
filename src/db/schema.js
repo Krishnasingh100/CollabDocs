@@ -1,5 +1,6 @@
 import { desc } from "drizzle-orm";
 import { index, jsonb, pgTable, text, timestamp, uuid, varchar } from "drizzle-orm/pg-core";
+
 // Documents table stores TipTap JSON plus plainText for search and previews.
 // Personal docs have null orgId; org docs share with every org member.
 // deletedAt: trash (soft delete keeps rows so they can be restored).

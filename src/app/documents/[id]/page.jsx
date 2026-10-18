@@ -2,7 +2,7 @@ import { redirect, notFound } from "next/navigation";
 import { DocumentView } from "./document-view";
 import { db } from "@/db";
 import { documentsTable } from "@/db/schema";
-import { isAuthConfigured, requireSession, resolveWorkspace } from "@/lib/auth/require-user";
+import { isAuthConfigured, requireSessionResult, resolveWorkspace } from "@/lib/auth/require-user";
 import { workspaceCondition } from "@/lib/documents-access";
 
 export const dynamic = "force-dynamic";
@@ -25,9 +25,12 @@ export default async function DocumentPage({ params }) {
   if (typeof id !== "string" || !UUID_RE.test(id)) notFound();
   // Defense in depth: proxy.js already redirects, but direct route hits
   // without a session get a clean redirect instead of an empty editor shell.
+  // Only a definitive signed-out answer redirects: when Neon Auth is
+  // unreachable the editor still renders and the API keeps enforcing access,
+  // so a network blip no longer makes every document click bounce to sign-in.
   if (isAuthConfigured()) {
-    const session = await requireSession();
-    if (!session?.user) redirect("/sign-in");
+    const { session, reachable } = await requireSessionResult();
+    if (reachable && !session?.user) redirect("/sign-in");
   }
   // Resolve the workspace scope once on the server: org documents get the
   // live collaboration room, personal documents stay room-free end to end.

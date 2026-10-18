@@ -100,7 +100,6 @@ export function WorkspaceSwitcher({ menuSide = "bottom" }) {
   const router = useRouter();
   const { data: session, refetch: refetchSession } = authClient.useSession();
   const { data: organizations } = authClient.useListOrganizations();
-  const { data: activeOrganization } = authClient.useActiveOrganization();
   const [switching, setSwitching] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [name, setName] = useState("");
@@ -114,7 +113,10 @@ export function WorkspaceSwitcher({ menuSide = "bottom" }) {
 
   const user = session?.user ?? null;
   const orgs = Array.isArray(organizations) ? organizations : [];
-  const activeOrg = activeOrganization ?? null;
+  // The session store is the source of truth for the active workspace id —
+  // the org-details hook caches separately and can lag behind a switch.
+  const activeOrgId = session?.session?.activeOrganizationId ?? null;
+  const activeOrg = orgs.find((org) => org.id === activeOrgId) ?? null;
 
   // Signed out (local workspace): no switching available.
   if (!user) {

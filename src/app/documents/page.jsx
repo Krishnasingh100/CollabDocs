@@ -83,13 +83,16 @@ export default function DocumentsPage() {
   const [createError, setCreateError] = useState(null);
   const { data: session } = authClient.useSession();
   const user = session?.user ?? null;
-  const { data: activeOrganization } = authClient.useActiveOrganization();
-  const activeOrg = activeOrganization ?? null;
-  const activeOrgId = activeOrg?.id ?? null;
-  // Liveblocks (inbox room, notification bell) is an organization feature:
-  // personal-only accounts never connect to a room, keeping the layers separate.
+  // Active workspace comes from the session store (server truth). The
+  // org-details hook caches its own response and lags right after switching,
+  // which kept the previous workspace's scope on screen.
+  const activeOrgId = session?.session?.activeOrganizationId ?? null;
   const { data: organizations } = authClient.useListOrganizations();
-  const hasOrganizations = Array.isArray(organizations) && organizations.length > 0;
+  const orgs = Array.isArray(organizations) ? organizations : [];
+  const activeOrg = orgs.find((org) => org.id === activeOrgId) ?? null;
+  // Liveblocks (inbox room, notification bell) is an organization feature:
+  // personal workspaces stay simple and never connect to a room.
+  const orgWorkspace = Boolean(activeOrgId);
   // Typing stays instant, table filters on the deferred value so each
   // keystroke does not re-render all rows synchronously.
   const deferredQuery = useDeferredValue(query);
@@ -105,7 +108,10 @@ export default function DocumentsPage() {
       }
       throw new Error("api failed");
     } catch {
-      setDocs(listLocalDocuments());
+      // Per-workspace privacy: personal workspace may show the browser's
+      // local copies, but an organization workspace must never display
+      // personal documents — a failed fetch shows an empty org list instead.
+      setDocs(activeOrgId ? [] : listLocalDocuments());
       setLoading(false);
     }
   };
@@ -152,7 +158,7 @@ export default function DocumentsPage() {
       clearTimeout(timer);
       if (res.ok) {
         const data = await res.json();
-        notifyOrgOfNewDocument(data.document, t.title);
+        void notifyOrgOfNewDocument(data.document, t.title);
         router.push(`/documents/${data.document.id}`);
         return;
       }
@@ -189,7 +195,7 @@ export default function DocumentsPage() {
         });
         if (res.ok) {
           const data = await res.json();
-          notifyOrgOfNewDocument(data.document, parsed.title);
+          void notifyOrgOfNewDocument(data.document, parsed.title);
           router.push(`/documents/${data.document.id}`);
           return;
         }
@@ -205,24 +211,33 @@ export default function DocumentsPage() {
       setOpening(false);
     }
   };
-  // Announces a newly created org document to the other org members.
-  // Member ids come from the auth client (org profile) and the endpoint
-  // verifies the caller is that org's active member before sending.
-  const notifyOrgOfNewDocument = (document, title) => {
-    if (!activeOrg || !document?.id) return;
-    const targets = (activeOrg.members ?? [])
-      .map((m) => m?.userId ?? m?.user?.id)
-      .filter(Boolean)
-      .filter((id) => id !== user?.id);
-    if (targets.length === 0) return;
-    void sendOrgNotification({
-      kind: "$orgDocumentCreated",
-      orgId: activeOrg.id,
-      orgName: activeOrg.name,
-      documentId: document.id,
-      documentTitle: title || document.title,
-      targets,
-    });
+  // Announces a newly created org document to the other org members. Member
+  // ids are fetched fresh at call time so a just-switched workspace is never
+  // announced with stale membership; the endpoint re-verifies that the caller
+  // is an active member of that org before fanning out.
+  const notifyOrgOfNewDocument = async (document, title) => {
+    if (!activeOrgId || !document?.id) return;
+    try {
+      const result = await authClient.organization.listMembers({
+        query: { organizationId: activeOrgId },
+      });
+      const members = result?.data?.members ?? [];
+      const targets = members
+        .map((m) => m?.userId ?? m?.user?.id)
+        .filter(Boolean)
+        .filter((id) => id !== user?.id);
+      if (targets.length === 0) return;
+      await sendOrgNotification({
+        kind: "$orgDocumentCreated",
+        orgId: activeOrgId,
+        orgName: activeOrg?.name ?? "Organization",
+        documentId: document.id,
+        documentTitle: title || document.title,
+        targets,
+      });
+    } catch {
+      // Best effort: the document is already saved; notifications are extra.
+    }
   };
   const removeDoc = async (id) => {
     setDocs((prev) => prev.filter((d) => d.id !== id));
@@ -265,7 +280,7 @@ export default function DocumentsPage() {
   if (!user) return null;
 
   return (
-    <InboxRoomProvider roomId={hasOrganizations ? dashRoomIdFor(user.id) : null}>
+    <InboxRoomProvider roomId={orgWorkspace ? dashRoomIdFor(user.id) : null}>
       <div className="flex min-h-screen w-full flex-col gap-6 px-4 py-4 sm:px-6">
         <div className="flex items-center gap-2">
           <Link
@@ -283,7 +298,7 @@ export default function DocumentsPage() {
             </div>
             <OrganizationPanel />
           </div>
-          {hasOrganizations && <NotificationBell />}
+          {orgWorkspace && <NotificationBell />}
           <AccountMenu />
         </div>
 
